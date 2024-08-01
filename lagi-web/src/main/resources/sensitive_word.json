@@ -1,6 +1,8 @@
 {
   "mask": "...",
   "rules": [
-    {"rule":"OPENAI","level": 2}
+
+    {"rule":"。","level": 3}
+
   ]
 }

@@ -67,13 +67,20 @@ public class WriteIds {
                 if (values.length >= 2) { // 确保有足够的列
                     String id = values[0].trim(); // 假设ID在第一列
                     String keyword = values[1].trim().replaceAll("^\"|\"$", "");
-                    String comments = values[2].trim().replaceAll("^\"|\"$", "");
+                    String comments ="";
+                    if (values.length > 2){
+                        comments = values[2].trim().replaceAll("^\"|\"$", "");
+                    }
                     //String dimension = values[3].trim().replaceAll("^\"|\"$", "");
                     //System.out.println("keyword: " + keyword);
 
                     for (String k : keywordArray) {
                         //System.out.println("比对：k: " + k);
-                        if (keyword.equals(k.trim())) {
+                        //空格转下划线
+                        String newkeyword = keyword.replaceAll("\\s", "_");
+                        String newk = k.trim().replaceAll("\\s", "_");
+
+                        if (newkeyword.equals(newk)) {
                             ids.add(id);
                             WriteCvs writeCvs = new WriteCvs();
                             writeCvs.setId(id);
@@ -93,7 +100,7 @@ public class WriteIds {
     private static boolean hasHeader(String filePath) {
         boolean hasHeader = false;
         try (BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(filePath), Charset.forName("UTF-8")))) {
-        //try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
+            //try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
             String line = br.readLine();
             if (line != null && !line.isEmpty()) {
                 String[] columns = line.split(",");
@@ -133,5 +140,9 @@ public class WriteIds {
         }
 
         return fileContentBuilder.toString();
+    }
+
+    public static void main(String[] args) {
+        System.out.println("Hello world!");
     }
 }

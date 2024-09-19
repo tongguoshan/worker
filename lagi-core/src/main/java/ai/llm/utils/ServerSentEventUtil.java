@@ -1,6 +1,8 @@
 package ai.llm.utils;
 
+import ai.annotation.LLM;
 import ai.common.ModelService;
+import ai.common.exception.RRException;
 import ai.common.utils.ObservableList;
 import ai.openai.pojo.ChatCompletionResult;
 import okhttp3.*;
@@ -13,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.SocketTimeoutException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -63,18 +66,17 @@ public class ServerSentEventUtil {
 
             @Override
             public void onFailure(@NotNull EventSource eventSource, @Nullable Throwable t, @Nullable Response response) {
-                if (t != null) {
-                    if(t instanceof SocketTimeoutException) {
-                        log.error("sockt time out");
-                        CacheManager.put(modelService.getModel(), Boolean.FALSE);
-                        log.error("sockt time out model will be disconnected");
-////                        modelService.setPriority(0);
-                        closeConnection(eventSource);
-//                        result.add("");
-//                        result.onComplete();
+                log.error("model request failed response : {}", response);
+                LLM annotation = modelService.getClass().getAnnotation(LLM.class);
+                 Arrays.stream(annotation.modelNames()).forEach(
+                    model->{
+                        CacheManager.put(model, Boolean.FALSE);
                     }
-                    t.printStackTrace();
+                );
+                if(t != null) {
+                    log.error("model request failed error {}", t.getMessage());
                 }
+                closeConnection(eventSource);
             }
 
             @Override

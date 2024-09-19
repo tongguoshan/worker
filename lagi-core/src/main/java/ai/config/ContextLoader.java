@@ -15,7 +15,7 @@ public class ContextLoader {
 
     private static final Logger log = LoggerFactory.getLogger(ContextLoader.class);
 
-    public static AbstractConfiguration configuration = null;
+    public static GlobalConfigurations configuration = null;
 
     private static void loadContextByInputStream(InputStream inputStream) {
         ObjectMapper mapper = new YAMLMapper();
@@ -70,7 +70,7 @@ public class ContextLoader {
 
     public static void main(String[] args) {
 
-
+        ContextLoader.loadContext();
         System.out.println(ContextLoader.configuration);;
     }
 }

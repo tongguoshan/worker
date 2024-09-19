@@ -11,13 +11,11 @@ import java.util.List;
 @ToString
 @Data
 public class ModelFunctions {
-
+    @JsonProperty("chat_policy")
+    private String chatPolicy;
     private List<EmbeddingConfig> embedding;
-    private String streamBackend;
     @JsonProperty("chat")
     private List<Backend> chat;
-//    @JsonProperty("RAG")
-//    private List<Backend> RAG;
     @JsonProperty("speech2text")
     private List<Backend> speech2text;
     @JsonProperty("text2speech")
@@ -40,5 +38,6 @@ public class ModelFunctions {
     private List<Backend> translate;
     @JsonProperty("speech2clone")
     private List<Backend> speech2clone;
-
+    @JsonProperty("image2ocr")
+    private List<Backend> image2ocr;
 }

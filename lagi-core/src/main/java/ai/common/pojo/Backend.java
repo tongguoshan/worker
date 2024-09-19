@@ -34,4 +34,8 @@ public class Backend {
     private String accessToken;
     private String others;
     private String alias;
+    private Boolean cacheEnable;
+    private String cacheDir;
+    private String router;
+    private Boolean dependingOnTheContext;
 }

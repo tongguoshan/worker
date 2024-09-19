@@ -25,6 +25,13 @@ public class BaichuanAdapter extends ModelService implements ILlmAdapter {
     private static final int HTTP_TIMEOUT = 5 * 1000;
     private static final String COMPLETIONS_URL = "https://api.baichuan-ai.com/v1/chat/completions";
 
+    @Override
+    public boolean verify() {
+        if(getApiKey() == null || getApiKey().startsWith("you")) {
+            return false;
+        }
+        return true;
+    }
 
     @Override
     public ChatCompletionResult completions(ChatCompletionRequest chatCompletionRequest) {

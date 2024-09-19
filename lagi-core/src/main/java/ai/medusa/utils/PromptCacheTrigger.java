@@ -1,26 +1,24 @@
 package ai.medusa.utils;
 
 import ai.common.pojo.IndexSearchData;
+import ai.common.pojo.QaPair;
+import ai.common.utils.ThreadPoolManager;
 import ai.llm.service.CompletionsService;
 import ai.llm.utils.CompletionUtil;
 import ai.medusa.impl.CompletionCache;
 import ai.medusa.impl.QaCache;
-import ai.medusa.pojo.PooledPrompt;
 import ai.medusa.pojo.PromptInput;
 import ai.openai.pojo.ChatCompletionRequest;
 import ai.openai.pojo.ChatCompletionResult;
 import ai.openai.pojo.ChatMessage;
-import ai.utils.LRUCache;
-import ai.utils.LagiGlobal;
+import ai.utils.*;
 import ai.utils.qa.ChatCompletionUtil;
 import ai.vector.VectorStoreService;
-import com.google.common.collect.Lists;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 public class PromptCacheTrigger {
@@ -29,7 +27,7 @@ public class PromptCacheTrigger {
     private static final int SUBSTRING_THRESHOLD = PromptCacheConfig.SUBSTRING_THRESHOLD;
     private static final double LCS_RATIO_QUESTION = PromptCacheConfig.LCS_RATIO_QUESTION;
     private final CompletionCache completionCache;
-    private static final ExecutorService executorService = Executors.newFixedThreadPool(PromptCacheConfig.WRITE_CACHE_THREADS);
+    private static final ExecutorService executorService;
     private final VectorStoreService vectorStoreService = new VectorStoreService();
     private final LRUCache<PromptInput, List<ChatCompletionResult>> promptCache;
     private final QaCache qaCache;
@@ -38,6 +36,8 @@ public class PromptCacheTrigger {
 
     static {
         rawAnswerCache = new LRUCache<>(PromptCacheConfig.RAW_ANSWER_CACHE_SIZE);
+        ThreadPoolManager.registerExecutor("medusa");
+        executorService = ThreadPoolManager.getExecutor("medusa");
     }
 
     public PromptCacheTrigger(CompletionCache completionCache) {
@@ -60,14 +60,14 @@ public class PromptCacheTrigger {
 
         PromptInput promptInputWithBoundaries = analyzeChatBoundaries(promptInput);
 
-        PromptInput lastPromptInput = PromptInputUtil.getLastPromptInput(promptInputWithBoundaries);
-        List<ChatCompletionResult> completionResultList = promptCache.get(lastPromptInput);
 
         chatCompletionResult = completionsWithContext(promptInputWithBoundaries);
         if (chatCompletionResult == null) {
             return;
         }
 
+        PromptInput lastPromptInput = PromptInputUtil.getLastPromptInput(promptInputWithBoundaries);
+        List<ChatCompletionResult> completionResultList = promptCache.get(lastPromptInput);
         // If the prompt list has only one prompt, add the prompt input to the cache.
         // If the prompt list has more than one prompt and the last prompt is not in the prompt cache, add the prompt to the cache.
         if (promptInputWithBoundaries.getPromptList().size() == 1 && completionResultList == null) {
@@ -85,15 +85,22 @@ public class PromptCacheTrigger {
     }
 
     private synchronized void putCache(PromptInput promptInputWithBoundaries, PromptInput lastPromptInput, ChatCompletionResult chatCompletionResult, String newestPrompt) {
-        String lastPrompt = PromptInputUtil.getLastPrompt(promptInputWithBoundaries);
-        List<PromptInput> promptInputList = qaCache.get(lastPrompt);
-        int index = promptInputList.indexOf(lastPromptInput);
-        PromptInput promptInputInCache = promptInputList.get(index);
+        String firstPrompt = PromptInputUtil.getFirstPrompt(promptInputWithBoundaries);
+        List<PromptInput> promptInputList = qaCache.get(firstPrompt);
+//        int index = promptInputList.indexOf(lastPromptInput);
+//        PromptInput promptInputInCache = promptInputList.get(index);
+        PromptInput promptInputInCache = promptInputList.get(0);
         List<ChatCompletionResult> completionResults = promptCache.get(promptInputInCache);
         completionResults.add(chatCompletionResult);
         promptCache.remove(promptInputInCache);
         promptInputInCache.getPromptList().add(newestPrompt);
-        qaCache.put(newestPrompt, promptInputList);
+        List<PromptInput> promptInputs = qaCache.get(newestPrompt);
+        if(promptInputs == null) {
+            promptInputs = new ArrayList<>();
+        }
+        promptInputs.add(promptInputInCache);
+//        qaCache.put(newestPrompt, promptInputList);
+        qaCache.put(newestPrompt, promptInputs);
         promptCache.put(promptInputInCache, completionResults);
     }
 
@@ -121,97 +128,177 @@ public class PromptCacheTrigger {
         if (questionList.size() < 2) {
             return promptInput;
         }
+//        String pattern = "[ \n\\.,;!\\?，。；！？#\\*：:-]";
         List<String> answerList = getRawAnswer(questionList);
-
-        String q0 = questionList.get(0);
-        String a0 = answerList.get(0);
-        Set<String> s00 = LCS.findLongestCommonSubstrings(q0, a0, SUBSTRING_THRESHOLD);
-
-        Set<String> lastDiagSet = LCS.findLongestCommonSubstrings(questionList.get(1), a0, SUBSTRING_THRESHOLD);
-
+//        questionList = questionList.stream().map(q->q.replaceAll(pattern, "")).collect(Collectors.toList());
+//        answerList = answerList.stream().map(q->{
+//            String s = q.replaceAll(pattern, "");
+//            return s.substring(0, PromptCacheConfig.TRUNCATE_LENGTH);
+//        }).collect(Collectors.toList());
+//        int startIndex = 0;
+//        String startQ = questionList.get(startIndex);
+//        String startA = answerList.get(startIndex);
+//        Set<String> startCoreSet = LCS.findLongestCommonSubstrings(startQ, startA, PromptCacheConfig.START_CORE_THRESHOLD);
+//        Set<String> continuousSet = null;
+//        for (int i = 1; i < questionList.size(); i++) {
+//            String curQ = questionList.get(i);
+//            String curA = answerList.get(i);
+//            String lastA = answerList.get(i-1);
+//            Set<String> sameCoreSet = LCS.findLongestCommonSubstrings(startQ, curA, PromptCacheConfig.ANSWER_CORE_THRESHOLD);
+//            if(continuousSet == null) {
+//                continuousSet = LCS.findLongestCommonSubstrings(curA, lastA, PromptCacheConfig.ANSWER_CORE_THRESHOLD);
+//                Set<String> finalStartCoreSet = startCoreSet;
+//                continuousSet = continuousSet.stream().filter(s->{
+//                    long count = finalStartCoreSet.stream().filter(c -> c.contains(s)).count();
+//                    return count > 0;
+//                }).collect(Collectors.toSet());
+//            } else {
+//                Set<String> aaSet = LCS.findLongestCommonSubstrings(curA, lastA, PromptCacheConfig.ANSWER_CORE_THRESHOLD);
+//                continuousSet = continuousSet.stream().filter(s->{
+//                    long count = aaSet.stream().filter(c -> c.contains(s)).count();
+//                    return count > 0;
+//                }).collect(Collectors.toSet());
+//            }
+//            double sameRadio = LCS.getLcsRatio(startQ, sameCoreSet);
+//            double conRadio = LCS.getLcsRatio(curA, continuousSet);
+//            double radio = (double) PromptCacheConfig.ANSWER_CORE_THRESHOLD / curA.length();
+//            if( sameRadio < LCS_RATIO_QUESTION && conRadio < radio) {
+//                startIndex = i;
+//                startQ = questionList.get(startIndex);
+//                startA = answerList.get(startIndex);
+//                startCoreSet = LCS.findLongestCommonSubstrings(startQ, startA, PromptCacheConfig.START_CORE_THRESHOLD);
+//                continuousSet = null;
+//            }
+//        }
+        List<QaPair> qaPairs = convert2QaPair(questionList, answerList);
+        List<List<QaPair>> splitQaPairs = splitQaPairBySemantics(qaPairs);
         int startIndex = 0;
-        for (int i = 1; i < questionList.size(); i++) {
-            String qi = questionList.get(i);
-            String ai = answerList.get(i);
-            Set<String> si = LCS.findLongestCommonSubstrings(q0, ai, SUBSTRING_THRESHOLD);
-            si.retainAll(s00);
-
-            double ratio1 = LCS.getLcsRatio(qi, si);
-            String lastA = answerList.get(i - 1);
-            Set<String> diagSet = LCS.findLongestCommonSubstrings(qi, lastA, SUBSTRING_THRESHOLD);
-            diagSet.retainAll(lastDiagSet);
-            double ratio2 = LCS.getLcsRatio(qi, diagSet);
-            lastDiagSet = diagSet;
-            if (ratio1 < LCS_RATIO_QUESTION && ratio2 < LCS_RATIO_QUESTION) {
-                startIndex = i;
-                q0 = questionList.get(startIndex);
-                a0 = answerList.get(startIndex);
-                s00 = LCS.findLongestCommonSubstrings(q0, a0, SUBSTRING_THRESHOLD);
-            }
+        if(!splitQaPairs.isEmpty() && !splitQaPairs.get(splitQaPairs.size() -1).isEmpty()) {
+            startIndex = splitQaPairs.get(splitQaPairs.size() -1).get(0).getQIndex();
         }
         return PromptInput.builder()
                 .parameter(promptInput.getParameter())
-                .promptList(questionList.subList(startIndex, questionList.size()))
+                .promptList(promptInput.getPromptList().subList(startIndex, promptInput.getPromptList().size()))
                 .build();
     }
 
 
-    public static int analyzeChatBoundariesForIntent(ChatCompletionRequest chatCompletionRequest) {
-        int startIndex = 0;
 
-        if (chatCompletionRequest.getMessages().size() < 3) {
-            return startIndex;
+    public static List<Integer> analyzeChatBoundariesForIntent(ChatCompletionRequest chatCompletionRequest) {
+        List<ChatMessage> chatMessages = chatCompletionRequest.getMessages();
+        int finalIndex = chatMessages.size() - 1;
+        LinkedList<Integer> res = new LinkedList<>();
+        if(chatMessages.size() < 2) {
+            res.add(finalIndex);
+            return res;
         }
-        List<String> contents = chatCompletionRequest.getMessages().stream().map(ChatMessage::getContent).collect(Collectors.toList());
-        startIndex = getLastRelateQuestionIndex(contents.size() - 1, contents.size() - 3, contents);
-        if (startIndex == contents.size() - 1) {
-            return startIndex;
+        List<QaPair> qaPairs = convert2QaPair(chatMessages, 30);
+        List<List<QaPair>> splitQaPairs = splitQaPairBySemantics(qaPairs);
+        if(!splitQaPairs.isEmpty() && !splitQaPairs.get(splitQaPairs.size() -1).isEmpty()) {
+            int lastQIndex = splitQaPairs.get(splitQaPairs.size() -1).get(0).getQIndex();
+            res.add(lastQIndex);
         }
-        String curQ = ChatCompletionUtil.getLastMessage(chatCompletionRequest);
-        String lastQ = chatCompletionRequest.getMessages().get(startIndex).getContent();
-        try {
-            VectorStoreService vectorStoreService = new VectorStoreService();
+        res.add(finalIndex);
+        return res;
+    }
 
-            List<IndexSearchData> prompts = vectorStoreService.search(curQ, chatCompletionRequest.getCategory());
-            List<IndexSearchData> complexPrompts = vectorStoreService.search(lastQ + "," + curQ, chatCompletionRequest.getCategory());
+    private static List<QaPair> convert2QaPair(List<String> questionList, List<String> answerList) {
+        List<QaPair> qaPairs = new ArrayList<>();
+        for (int i = 0; i < questionList.size(); i++) {
+            String aa = answerList.get(i).trim();
+            aa = StrFilterUtil.filterPunctuations(aa);
+            int min = Math.min(aa.length(), 50);
+            aa = aa.substring(0, min);
+            String qq = questionList.get(i).trim();
+            qq = StrFilterUtil.filterPunctuations(qq);
+            QaPair qa = QaPair.builder().a(aa).aIndex(i).q(qq).qIndex(i).build();
+            qaPairs.add(qa);
+        }
+        return qaPairs;
+    }
 
-            if (!prompts.isEmpty() && !complexPrompts.isEmpty()) {
-                Float distance = prompts.get(0).getDistance();
-                Float distance1 = complexPrompts.get(0).getDistance();
-                if (distance < distance1) {
-                    return contents.size() - 1;
+    private static List<QaPair> convert2QaPair(List<ChatMessage> chatMessages, int deep) {
+        List<QaPair> qaPairs = new ArrayList<>();
+        for (int i = chatMessages.size() - 2, count = 0; i > 0 && count < deep; i -= 2, count++) {
+            int aIndex = i;
+            int qIndex = i - 1;
+            ChatMessage a = chatMessages.get(aIndex);
+            ChatMessage q = chatMessages.get(qIndex);
+            String aa = a.getContent().trim();
+            aa = StrFilterUtil.filterPunctuations(aa);
+            int min = Math.min(aa.length(), 50);
+            aa = aa.substring(0, min);
+            String qq = q.getContent().trim();
+            qq = StrFilterUtil.filterPunctuations(qq);
+            QaPair qa = QaPair.builder().a(aa).aIndex(aIndex).q(qq).qIndex(qIndex).build();
+            qaPairs.add(qa);
+        }
+        Collections.reverse(qaPairs);
+        return qaPairs;
+    }
+
+    private static List<List<QaPair>> splitQaPairBySemantics(List<QaPair> qaPairs) {
+        Set<String> qaCore = new HashSet<>();
+        List<List<QaPair>> dialogPairs = new ArrayList<>();
+        List<QaPair> curDialog = new ArrayList<>();
+        dialogPairs.add(curDialog);
+        for (int i = 0; i < qaPairs.size(); i++) {
+            QaPair qaPair = qaPairs.get(i);
+            if(StoppingWordUtil.containsStoppingWorlds(qaPair.getQ())) {
+                if(curDialog.isEmpty()) {
+                    curDialog.add(qaPair);
+                } else {
+                    curDialog = new ArrayList<>();
+                    curDialog.add(qaPair);
+                    dialogPairs.add(curDialog);
+                }
+                qaCore = LCS.findLongestCommonSubstrings(qaPair.getQ(), qaPair.getA(), PromptCacheConfig.START_CORE_THRESHOLD);
+                continue;
+            }
+            if(ContinueWordUtil.containsStoppingWorlds(qaPair.getQ())) {
+                curDialog.add(qaPair);
+                continue;
+            }
+            if(curDialog.isEmpty()) {
+                curDialog.add(qaPair);
+                continue;
+            }
+            String lastQ = curDialog.get(0).getQ();
+            String curA = qaPair.getA();
+            Set<String> QAnCore = LCS.findLongestCommonSubstrings(lastQ, curA, PromptCacheConfig.ANSWER_CORE_THRESHOLD);
+            Set<String> retainAll = setRetainAll(qaCore, QAnCore);
+            double ratio = LCS.getLcsRatio(curA, retainAll);
+            double threshold = (double) PromptCacheConfig.ANSWER_CORE_THRESHOLD /  qaPair.getA().length();
+            if(ratio < threshold) {
+                curDialog = new ArrayList<>();
+                qaCore = LCS.findLongestCommonSubstrings(qaPair.getQ(), qaPair.getA(), PromptCacheConfig.START_CORE_THRESHOLD);
+                curDialog.add(qaPair);
+                dialogPairs.add(curDialog);
+            } else {
+                curDialog.add(qaPair);
+            }
+        }
+        return dialogPairs;
+    }
+
+    private static  Set<String> setRetainAll(Set<String> tempCore, Set<String> core) {
+        Set<String> temp = new HashSet<>();
+        tempCore = tempCore.stream().map(RetainWordUtil::replace).collect(Collectors.toSet());
+        core = core.stream().map(RetainWordUtil::replace).collect(Collectors.toSet());
+        for(String tempCoreStr: tempCore) {
+            for (String coreStr: core) {
+                String longStr = tempCoreStr.length() > coreStr.length() ? tempCoreStr : coreStr;
+                String shortStr = tempCoreStr.length() > coreStr.length() ? coreStr : tempCoreStr;
+                if(longStr.contains(shortStr)) {
+                    if(!RetainWordUtil.contains(coreStr)) {
+                        temp.add(coreStr);
+                    }
                 }
             }
-        } catch (Exception e) {
-            log.error("vector query error {}", e.getMessage());
         }
-        return startIndex;
+        return temp;
     }
 
-
-    public static int getLastRelateQuestionIndex(int curQuestionIndex, int lastQuestionIndex, List<String> contentList) {
-        if (lastQuestionIndex < 0) {
-            return curQuestionIndex;
-        }
-//        String curQuestion = BaseAnalysis.parse(contentList.get(curQuestionIndex)).toStringWithOutNature();
-        String curQuestion = contentList.get(curQuestionIndex);
-        int answerIndex = lastQuestionIndex + 1;
-//        String question = BaseAnalysis.parse(contentList.get(lastQuestionIndex)).toStringWithOutNature();
-        String question = contentList.get(lastQuestionIndex);
-//        String answer = BaseAnalysis.parse(contentList.get(answerIndex)).toStringWithOutNature();
-        String answer = contentList.get(answerIndex);
-//        String[] lcsQ = ai.core.matrix.LCS.lcs(answer, curQuestion, "[ \\\\.,;!\\\\?，。；！？]", 0, false);
-//        String[] lcsA = ai.core.matrix.LCS.lcs(question, curQuestion, "[ \\\\.,;!\\\\?，。；！？]", 0, false);
-        Set<String> qq = LCS.findLongestCommonSubstrings(curQuestion, question, 2);
-        Set<String> qa = LCS.findLongestCommonSubstrings(curQuestion, answer, 2);
-        double ratio1 = LCS.getLcsRatio(curQuestion, qq);
-        double ratio2 = LCS.getLcsRatio(curQuestion, qa);
-//        if(lcsA.length > 0 || lcsQ.length > 0) {
-        if (ratio1 > 0.25d || ratio2 > 0.35d) {
-            return getLastRelateQuestionIndex(lastQuestionIndex, lastQuestionIndex - 2, contentList);
-        }
-        return getLastRelateQuestionIndex(curQuestionIndex, lastQuestionIndex - 2, contentList);
-    }
 
     private List<String> getRawAnswer(List<String> questionList) {
         List<ChatMessage> messages = new ArrayList<>();
@@ -227,9 +314,14 @@ public class PromptCacheTrigger {
 
     private ChatCompletionResult completionsWithContext(PromptInput promptInput) {
         String lastPrompt = PromptInputUtil.getNewestPrompt(promptInput);
-        String text = String.join(";", promptInput.getPromptList());
+        String text = lastPrompt;
+        if(promptInput.getPromptList().size() > 1) {
+            String firstPrompt = PromptInputUtil.getFirstPrompt(promptInput);
+            text  = firstPrompt + "," +text;
+        }
+//        String text = String.join(";", promptInput.getPromptList());
         List<IndexSearchData> indexSearchDataList = vectorStoreService.search(text, promptInput.getParameter().getCategory());
-        String context = completionsService.getRagContext(indexSearchDataList);
+        String context = completionsService.getRagContext(indexSearchDataList).getContext();
         ChatCompletionRequest request = completionsService.getCompletionsRequest(
                 promptInput.getParameter().getSystemPrompt(), lastPrompt, promptInput.getParameter().getCategory());
         if (context != null) {
@@ -240,6 +332,14 @@ public class PromptCacheTrigger {
         return result;
     }
 
+    private void delay(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            log.error(e.getMessage(), e);
+        }
+    }
+
     private String completions(List<ChatMessage> messages) {
         String answer = rawAnswerCache.get(messages);
         if (answer == null) {
@@ -247,23 +347,15 @@ public class PromptCacheTrigger {
             ChatCompletionResult result = completionsService.completions(request);
             answer = ChatCompletionUtil.getFirstAnswer(result);
             rawAnswerCache.put(messages, answer);
+            delay(PromptCacheConfig.getPreDelay());
         }
         return answer;
     }
 
 
     public static void main(String[] args) {
-        ArrayList<String> messages = Lists.newArrayList("我的社保卡丢失了，该怎么办？",
-                "根据您提供的背景信息，如果您的社会保障卡丢失了，您需要按照以下步骤进行操作：<br><br>1. 携带您的居民身份证。<br>2. 前往社会保障卡服务网点。<br>3. 在该网点进行正式挂失手续。<br>4. 同时办理补卡手续。<br>5. 等待15个工作日。<br>6. 携带居民身份证和领卡证明返回社会保障卡服务网点领取新卡。<br><br>请注意，一旦您办理了正式挂失和补卡手续，就无法撤销挂失。",
-                "如何进行补办？",
-                "根据您提供的背景信息，补办丢失的社会保障卡的步骤如下：<br><br>1. **携带本人居民身份证**：首先，您需要携带自己的居民身份证，这是办理挂失和补卡手续的必要证件。<br><br>2. **前往社会保障卡服务网点**：您需要前往提供社会保障卡服务的网点。这些网点可能分布在各个社区、街道或当地的人力资源和社会保障机构。<br><br>3. **正式挂失**：在社会保障卡服务网点，您需要告知工作人员您的社会保障卡已经丢失，并提供居民身份证，以便进行正式挂失。这是必要的一步，以防止丢失的卡片被他人滥用。<br><br>4. **办理补卡手续**：在挂失的同时，您可以向工作人员说明您需要办理补卡手续。工作人员会指导您完成所需的申请和填写相关表格。<br><br>5. **等待15个工作日**：补卡手续办理完成后，您可能需要等待一段时间，通常是15个工作日，以便新的社会保障卡制作完成。<br><br>6. **领卡**：在规定的等待时间过后，您需要携带您的居民身份证和领卡证明返回社会保障卡服务网点，领取新的社会保障卡。<br><br>7. **注意挂失不可撤销**：一旦您办理了正式挂失和补卡手续，就不能撤销挂失。这意味着即使您的社会保障卡在挂失后被找到，也不能继续使用，您只能使用新补办的卡片。<br><br>以上步骤确保了社会保障卡的安全和补办流程的顺利进行。",
-                "我可以进行网上办理吗？");
-        int lastRelateQuestionIndex = getLastRelateQuestionIndex(messages.size() - 1, messages.size() - 3, messages);
-        System.out.println(lastRelateQuestionIndex);
-
-        messages.add("根据您提供的《关于印发北京市社会保障卡使用管理暂行办法的通知》（京人社保发〔2009〕152号）中的信息，该通知并没有明确提及网上办理社会保障卡挂失和补办的具体流程。通常来说，社会保障卡的挂失和补办涉及到居民个人信息的安全，需要核实身份证明和办理手续，因此很可能需要本人亲自到服务网点进行办理。<br><br>但是，随着技术的发展和便民服务的改进，一些地区可能已经推出了网上办理的服务。建议您登录当地人力资源和社会保障局的官方网站或使用他们的服务平台（如手机APP、微信公众号等）进行查询，看看是否有提供网上办理的选项。如果网上办理服务可用，通常需要按照指导完成身份验证、填写相关表格和上传所需文件等步骤。<br><br>如果网上办理不可用，您需要按照通知中的规定，持本人居民身份证前往社会保障卡服务网点进行正式挂失并办理补卡手续。同时，记得在挂失和补办过程中遵循通知中的指引，确保所有操作符合规定的程序。");
-        messages.add("写一手诗？");
-        lastRelateQuestionIndex = getLastRelateQuestionIndex(messages.size() - 1, messages.size() - 3, messages);
-        System.out.println(lastRelateQuestionIndex);
+//        ContextLoader.loadContext();
+//        PromptInput promptInput = new PromptCacheTrigger(CompletionCache.getInstance()).analyzeChatBoundaries(null);
+//        System.out.println(promptInput);
     }
 }

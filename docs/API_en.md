@@ -1,29 +1,10 @@
 # API Documentation
 
-## Start Lag[i]
+## Start Lag[i] (Landing AGI)
 
-### 1.Install the startup vector database
+### 1.Configure yml files
 
-Retrieving the enhanced `rag` feature requires a vector database, you can choose your preferred database according to your preferences.
-
-***Take chromadb：***
-
-You can pull the installation and start chromadb by running the following command directly from docker.
-
-```bash
-docker run -d \
-    --name chromadb \
-    -p 8000:8000 \
-    -v /mydata/docker/local/chroma/data:/study/ai/chroma \
-    -e IS_PERSISTENT=TRUE \
-    -e ANONYMIZED_TELEMETRY=TRUE \
-    chromadb/chroma:latest
-```
-You can access via a browser: http://localhost:8000/docs verify if started successfully.
-
-### 2.Configure yml files
-
-Modify [`src/main/resources/lagi.yml`](lagi-web/src/main/resources/lagi.yml) configuration file, select the model you like, will be one of the major language model your - API - key information such as the replacement for your own key, And set the 'enable' field of the enabled model to 'true' as needed. See the [configuration documentation](docs/config_zh.md) for details.
+Modify [`src/main/resources/lagi.yml`](../lagi-web/src/main/resources/lagi.yml) configuration file, select the model you like, will be one of the major language model your - API - key information such as the replacement for your own key, And set the 'enable' field of the enabled model to 'true' as needed. See the [configuration documentation](config_en.md) for details.
 
 ***Take kimi：***
 
@@ -55,32 +36,9 @@ Depending on your needs, set the mode stream and the priority of the model outpu
       priority: 150
 ```
 
-Select the configured vector database and fill in the corresponding configuration information.
+### 2.import dependencies
 
-***Take local chromadb:***
-
-Replace the url with the chromadb url http://localhost:8000.
-
-```yaml
-  vectors:
-    - name: chroma
-      driver: ai.vector.impl.ChromaVectorStore
-      default_category: default
-      similarity_top_k: 10
-      similarity_cutoff: 0.5
-      parent_depth: 1
-      child_depth: 1
-      url: http://localhost:8000
-
-  rag:
-    - backend: chroma
-      enable: true
-      priority: 10
-```
-
-### 3.import dependencies
-
-To call the lag[i] API, you need to import the dependencies, which you can import via maven or directly by importing the jar.
+To call the lag[i] (Landing AGI) API, you need to import the dependencies, which you can import via maven or directly by importing the jar.
 
 ***Take maven：***
 
@@ -90,7 +48,7 @@ Use maven to download the dependency execution command.
 mvn clean install
 ```
 
-### 4.Starting the web service
+### 3.Starting the web service
 
 You can choose to use the maven command-line tool for wrapping, or run it through a popular integrated development environment (IDE) such as IntelliJ IDEA. Make sure your JDK version meets at least 8.
 
@@ -102,11 +60,11 @@ Use the maven command to wrap the project, which will generate a war file in the
 mvn package
 ```
 
-Deploy the generated war package to the Tomcat server. After starting Tomcat, you can view the Lag[i] page by visiting the corresponding port in your browser.
+Deploy the generated war package to the Tomcat server. After starting Tomcat, you can view the Lag[i] (Landing AGI) page by visiting the corresponding port in your browser.
 
 ## Completions Interface
 
-POST /chat/completions
+POST `/chat/completions`
 
 Enter a prompt to get an answer from the large model.
 
@@ -196,7 +154,7 @@ Status Code **200**
 
 ## Speech Recognition
 
-POST /audio/speech2text
+POST `/audio/speech2text`
 
 The speech recognition interface returns the text after recognition.
 
@@ -265,7 +223,7 @@ Enter text to return a spoken audio file.
 
 ## Image Generation
 
-POST /image/text2image
+POST `/image/text2image`
 
 Enter a command to generate images and return images.
 
@@ -317,7 +275,7 @@ Status Code **200**
 
 ## Upload Private Training Files
 
-POST /training/upload
+POST `/training/upload`
 
 Upload private training files, supporting txt, word, pdf formats.
 
@@ -361,7 +319,7 @@ Status Code **200**
 
 ## Training Private Q&A Pair Data
 
-POST /training/pairing
+POST `/training/pairing`
 
 Training private Q&A pair data, required in JSON format
 
@@ -374,7 +332,8 @@ The data and instruction field supports either an object or a list of objects, a
     "category": "default",
     "data": {
         "instruction": "What are the steps involved in reissuing a medical practitioner's license?",
-        "output": "The process of reissuing a medical practitioner's license includes five steps: application/receipt, acceptance, decision, certification, and issuance."
+        "output": "The process of reissuing a medical practitioner's license includes five steps: application/receipt, acceptance, decision, certification, and issuance.",
+        "image":"[{\"path\": \"https://downloads.saasai.top/vector/szu/8EB8BC9D3E5F4D987BBDB93ECEB_58E46C1C_6DCB0.png\"}]"
     }
 }
 ```
@@ -389,7 +348,8 @@ The data and instruction field supports either an object or a list of objects, a
         },
         {
             "instruction": "What are the stages in the process of reissuing a medical practitioner's license?",
-            "output": "The process of reissuing a medical practitioner's license includes five steps: application/receipt, acceptance, decision, certification, and issuance."
+            "output": "The process of reissuing a medical practitioner's license includes five steps: application/receipt, acceptance, decision, certification, and issuance.",
+            "image":"[{\"path\": \"https://downloads.saasai.top/vector/szu/8EB8BC9D3E5F4D987BBDB93ECEB_58E46C1C_6DCB0.png\"}]"
         }
     ]
 }
@@ -405,6 +365,7 @@ The data and instruction field supports either an object or a list of objects, a
                 "What are the stages in the process of reissuing a medical practitioner's license?"
             ],
             "output": "The process of reissuing a medical practitioner's license includes five steps: application/receipt, acceptance, decision, certification, and issuance."
+            "image":"[{\"path\": \"https://downloads.saasai.top/vector/szu/8EB8BC9D3E5F4D987BBDB93ECEB_58E46C1C_6DCB0.png\"}]"
         }
     ]
 }
@@ -412,11 +373,14 @@ The data and instruction field supports either an object or a list of objects, a
 
 ### Request Parameters
 
-| Name       | Position | Type               | Required | Description             |
-| ---------- | -------- | ------------------ | -------- | ----------------------- |
-| body       | body     | object             | No       | none                    |
-| » category | body     | string             | Yes      | Specified data category |
-| » data     | body     | [object] or object | Yes      | Q&A pair data           |
+| Name           | Position | Type               | Required | Description                               |
+|----------------|----------| ------------------ |---------|-------------------------------------------|
+| body           | body     | object             | No      | none                                      |
+| » category     | body     | string             | Yes     | Specified data category                   |
+| » data         | body     | [object] or object | Yes     | Q&A pair data                             |
+| »» instruction | body     | [object] or object | Yes     | Question string or collection             |
+| »» output      | body     | [object] or object | Yes     | Answer string or collection               |
+| »» image       | body     | [object] or object | No      | A collection of related picture objects   |
 
 ### Return example
 
@@ -444,7 +408,7 @@ Status Code **200**
 
 ## Image Captioning
 
-POST /image/image2text
+POST `/image/image2text`
 
 Upload an image and return a description of the image.
 
@@ -493,7 +457,7 @@ Status Code **200**
 
 ## Video Tracking
 
-POST /video/video2tracking
+POST `/video/video2tracking`
 
 Upload a video for video tracking.
 
@@ -538,7 +502,7 @@ Status Code **200**
 
 ## Image Enhancement
 
-POST /image/image2enhance
+POST `/image/image2enhance`
 
 Upload an image to enhance a blurry image.
 
@@ -583,7 +547,7 @@ Status Code **200**
 
 ## Picture to video
 
-POST /image/image2video
+POST `/image/image2video`
 
 Upload an image and generate a short video based on that image.
 
@@ -628,7 +592,7 @@ Status Code **200**
 
 ## Video Enhancement
 
-POST /video/video2enhance
+POST `/video/video2enhance`
 
 Upload a video for video frame interpolation.
 
@@ -670,3 +634,48 @@ Status Code **200**
 | -------- | ------ | -------- | ----------------------------- |
 | » status | string | true     | Status of the result          |
 | » data   | string | true     | Address of the enhanced video |
+
+## Image to ocr
+
+POST `/image/image2ocr`
+
+Upload an image and recognize the text on that image.
+
+### Body request parameters
+
+```yaml
+file: file://D:\Test\Datasets\Image\kppziguz230716233346.jpg
+```
+
+### Request Parameters
+
+| Name   | Position | Type           | Required | Description            |
+| ------ | -------- | -------------- | -------- |------------------------|
+| body   | body     | object         | No       | none                   |
+| » file | body     | string(binary) | Yes      | Uploading image files  |
+
+### Return example
+
+> Success
+
+```json
+{
+  "data": ["The development of image-text recognition conversion technology has greatly improved the efficiency of information processing, making information more convenient for storage, retrieval and analysis."],
+  "status": "success"
+}
+```
+
+### Return Result
+
+| Status Code | Meaning | Description |
+| ----------- | ------- | ----------- |
+| 200         | OK      | Success     |
+
+### Return Data Structure
+
+Status Code **200**
+
+| Name     | Type            | Required | Description                              |
+| -------- |-----------------| -------- |------------------------------------------|
+| » status | string          | true     | Status of the result                     |
+| » data   | List< string >  | true     | Returns an array of recognized literals  |

@@ -7,6 +7,7 @@ import ai.config.pojo.StoreConfig;
 import ai.config.pojo.WorkerConfig;
 import ai.manager.*;
 import ai.medusa.utils.PromptCacheConfig;
+import ai.ocr.OcrConfig;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -31,22 +32,12 @@ public class GlobalConfigurations extends AbstractConfiguration {
 
     @Override
     public void init() {
-
+        BigdataManager.getInstance().register(stores.getBigdata());
         OSSManager.getInstance().register(stores.getOss());
         VectorStoreManager.getInstance().register(stores.getVectors(), stores.getRag(), functions.getEmbedding());
-        LlmManager.getInstance().register(models, functions.getChat());
-        ASRManager.getInstance().register(models, functions.getSpeech2text());
-        TTSManager.getInstance().register(models, functions.getText2speech());
-        Image2TextManger.getInstance().register(models, functions.getImage2text());
-        ImageGenerationManager.getInstance().register(models, functions.getText2image());
-        ImageEnhanceManager.getInstance().register(models, functions.getImage2Enhance());
-        Text2VideoManager.getInstance().register(models, functions.getText2video());
-        Image2VideoManager.getInstance().register(models, functions.getImage2video());
-        Video2EnhanceManger.getInstance().register(models, functions.getVideo2Enhance());
-        Video2TrackManager.getInstance().register(models, functions.getVideo2Track());
-        TranslateManager.getInstance().register(models, functions.getTranslate());
-        SoundCloneManager.getInstance().register(models, functions.getSpeech2clone());
+        MultimodalAIManager.register(models, functions);
         PromptCacheConfig.init(stores.getVectors(), stores.getMedusa());
+        OcrConfig.init(functions.getImage2ocr());
     }
 
 
@@ -63,7 +54,6 @@ public class GlobalConfigurations extends AbstractConfiguration {
             return backend;
         }).filter(Objects::nonNull).collect(Collectors.toList());
         LLM llm = LLM.builder().backends(models).embedding(functions.getEmbedding().get(0))
-                .streamBackend(functions.getStreamBackend())
                 .chatBackends(chatBackends)
                 .build();
         llm.getBackends().forEach(backend -> {

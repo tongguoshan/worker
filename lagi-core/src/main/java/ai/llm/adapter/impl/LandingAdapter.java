@@ -8,7 +8,6 @@ import ai.llm.utils.ServerSentEventUtil;
 import ai.openai.pojo.ChatCompletionRequest;
 import ai.openai.pojo.ChatCompletionResult;
 import ai.utils.qa.HttpUtil;
-import cn.hutool.core.util.StrUtil;
 import com.google.gson.Gson;
 import io.reactivex.Observable;
 import org.slf4j.Logger;
@@ -26,20 +25,29 @@ public class LandingAdapter extends ModelService implements ILlmAdapter {
     private static final int HTTP_TIMEOUT = 15 * 1000;
     private static final String API_ADDRESS = "http://ai.landingbj.com/v1/chat/completions";
 
-
-    private String getApiAddressOrDefault() {
-        return StrUtil.isBlank(getApiAddress()) ? API_ADDRESS : getApiAddress();
+    @Override
+    public boolean verify() {
+        if (getApiKey() == null || getApiKey().startsWith("you")) {
+            return false;
+        }
+        return ai.utils.ApikeyUtil.isApiKeyValid(getApiKey());
     }
-
 
     @Override
     public ChatCompletionResult completions(ChatCompletionRequest chatCompletionRequest) {
+        String model = chatCompletionRequest.getModel();
+        String url = API_ADDRESS;
+        if (model.equals("cascade")) {
+            chatCompletionRequest.setModel(null);
+            chatCompletionRequest.setCategory(null);
+            url = "https://lagi.saasai.top/v1/chat/completions";
+        }
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", "Bearer " + getApiKey());
         String jsonResult = null;
         try {
-            jsonResult = HttpUtil.httpPost(getApiAddressOrDefault(), headers, chatCompletionRequest, HTTP_TIMEOUT);
+            jsonResult = HttpUtil.httpPost(url, headers, chatCompletionRequest, HTTP_TIMEOUT);
         } catch (IOException e) {
             logger.error("", e);
         }
@@ -55,7 +63,12 @@ public class LandingAdapter extends ModelService implements ILlmAdapter {
 
     @Override
     public Observable<ChatCompletionResult> streamCompletions(ChatCompletionRequest chatCompletionRequest) {
-        String apiUrl = getApiAddress();
+        String url = API_ADDRESS;
+        if (model.equals("cascade")) {
+            chatCompletionRequest.setModel(null);
+            chatCompletionRequest.setCategory(null);
+            url = "https://lagi.saasai.top/v1/chat/completions";
+        }
         String json = gson.toJson(chatCompletionRequest);
         String apiKey = getApiKey();
         Function<String, ChatCompletionResult> convertFunc = e -> {
@@ -64,12 +77,14 @@ public class LandingAdapter extends ModelService implements ILlmAdapter {
             }
             ChatCompletionResult result = gson.fromJson(e, ChatCompletionResult.class);
             result.getChoices().forEach(choice -> {
-                choice.setMessage(choice.getDelta());
-                choice.setDelta(null);
+                if (choice.getDelta() != null) {
+                    choice.setMessage(choice.getDelta());
+                    choice.setDelta(null);
+                }
             });
             return result;
         };
-        ObservableList<ChatCompletionResult> result = ServerSentEventUtil.streamCompletions(json, apiUrl, apiKey, convertFunc, this);
+        ObservableList<ChatCompletionResult> result = ServerSentEventUtil.streamCompletions(json, url, apiKey, convertFunc, this);
         Iterable<ChatCompletionResult> iterable = result.getObservable().blockingIterable();
         return Observable.fromIterable(iterable);
     }

@@ -1,6 +1,6 @@
 # Tutorial
 
-Lag[i] is a powerful enterprise-class composite multimodal big model middleware that helps you easily integrate big model technology into your business. This tutorial will guide you through the download, installation, configuration and operation of Lag[i] from scratch, so that you can quickly grasp the use of Lag[i].
+Lag[i] (Landing AGI) is a powerful enterprise-class composite multimodal big model middleware that helps you easily integrate big model technology into your business. This tutorial will guide you through the download, installation, configuration and operation of Lag[i] from scratch, so that you can quickly grasp the use of Lag[i].
 
 ## Environment preparation
 
@@ -10,13 +10,13 @@ Before you start, make sure you have the following environments ready:
 *   **Maven**
 *   **Docker (Optional, used to run vector database)**
 
-## 1. Download Lag[i]
+## 1. Download Lag[i] (Landing AGI)
 
-For developers, we provide an easy way to compile and run Lag[i] applications. You can choose to use the maven command-line tool for wrapping, or run it through a popular integrated development environment (IDE) such as IntelliJ IDEA.
+For developers, we provide an easy way to compile and run Lag[i] (Landing AGI) applications. You can choose to use the maven command-line tool for wrapping, or run it through a popular integrated development environment (IDE) such as IntelliJ IDEA.
 
 ### Method 1: Use maven command
 
-1. **Cloning project**：First, you need to clone the repository for the Lag[i] project:
+1. **Cloning project**：First, you need to clone the repository for the Lag[i] (Landing AGI) project:
 
 ```shell
 git clone https://github.com/landingbj/lagi.git
@@ -37,18 +37,18 @@ mvn clean install
 
 1. **Choose an IDE**： You can choose to use a mainstream IDE like IntelliJ IDEA or Eclipse.
 
-2. **Open GitHub repository**：Connect Lag[i] 's GitHub repository in IDE and use the clone function of IDE to clone Lag[i] project locally.
+2. **Open GitHub repository**：Connect Lag[i] (Landing AGI) 's GitHub repository in IDE and use the clone function of IDE to clone Lag[i] (Landing AGI) project locally.
 
 |        | GitHub repository                             | 
 |--------|---------------------------------------| 
 | SSH    | git@github.com:landingbj/lagi.git     |
 | HTTPS  | https://github.com/landingbj/lagi.git | 
 
-3. **Compile project**： Using the compile feature of your IDE, compile Lag[i] project.
+3. **Compile project**： Using the compile feature of your IDE, compile Lag[i] (Landing AGI) project.
 
 ## 2. Installing Vector database
 
-Lag[i] supports several vector databases, such as ChromaDB. If you want to enhance RAG functionality with retrieval, you need to install the vector database.  
+Lag[i] (Landing AGI) supports several vector databases, such as ChromaDB. If you want to enhance RAG functionality with retrieval, you need to install the vector database.  
 
 **Take ChromaDB for example**:
 
@@ -76,34 +76,35 @@ Lag[i] supports several vector databases, such as ChromaDB. If you want to enhan
     chroma run --path db_data
 ```
 
-### Option 2: Docker
+**Note：**
 
-***Make sure you have a Docker environment installed***
+Error when importing chromadb because sqlite3 version is too low
 
-- Run the following command to pull the installation and start chromadb.
+>RuntimeError: Your system has an unsupported version of sqlite3. Chroma requires sqlite3 >= 3.35.0.
+
+Follow these steps
+
+- 1.Install pysqlite3-binary
 
 ```bash
-    # Start the Chroma database container
-    #
-    # This command is used to start a database service container called Chroma in Docker. It uses a set of parameters to configure the container environment and external services.
-    # Parameters explained:
-    # -d: runs container in background and returns container ID
-    # --name: This specifies a name for the container for easier management and identification.
-    # -p: Container internal ports mapped to host ports, here container port 8000 is mapped to host port 8000.
-    # -v: Binding the container's internal directory to the host directory for persistent data storage. Here will host/mydata docker/local/chroma/data directory is bound to the container/study/ai/chroma directory.
-    # -e: Sets environment variables that are used to configure application behavior inside the container. Two environment variables are set:
-    #     IS_PERSISTENT=TRUE Indicates that database data will be stored persistently.
-    #     ANONYMIZED_TELEMETRY=TRUE Indicates that allows the collection of anonymous telemetry data.
-    # chromadb/chroma:latest: Specify that the image to use is the latest version of chromadb/chroma.
-    
-    docker run -d \
-    --name chromadb \
-    -p 8000:8000 \
-    -v /mydata/docker/local/chroma/data:/study/ai/chroma \
-    -e IS_PERSISTENT=TRUE \
-    -e ANONYMIZED_TELEMETRY=TRUE \
-    chromadb/chroma:latest
+pip install pysqlite3-binary
 ```
+
+- 2.When importing the chromadb package, overwrite the sqlite3 library to find your chromadb source edit `__init__.py` file
+
+```bash
+vim xxx/chromadb/__init__.py
+```
+- 3.Add three lines of code at the beginning
+
+```text
+__import__('pysqlite3')
+import sys
+sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+```
+
+- 4.Starting the database service
+  ![img_4.png](images/img_4.png)
 
 The installation is complete, you can access via a browser: http://localhost:8000/docs see if started successfully.
 
@@ -162,14 +163,17 @@ Select the configured vector database and fill in the corresponding configuratio
           url: http://localhost:8000
     
       rag:
-        - backend: chroma
-          enable: true
-          priority: 10
+        vector: chroma
+        # fulltext: elasticsearch
+        graph: landing
+        enable: true
+        priority: 10
+        default: "Please give prompt more precisely"
     ```
 
 ## 4. Import dependencies
 
-To call the lag[i] API, you need to import the dependencies, which you can import via maven or directly by import the jar.
+To call the lag[i] (Landing AGI) API, you need to import the dependencies, which you can import via maven or directly by import the jar.
 
 ***Take the maven import as an example：***
 
@@ -196,7 +200,7 @@ You can choose to use the maven command-line tool for wrapping, or run it throug
      Tomcat:
      > Copy the WAR file into Tomcat's webapps directory.
 
-Deploy the generated war package to the Tomcat server. After starting Tomcat, you can view the Lag[i] page by visiting the corresponding port in your browser.
+Deploy the generated war package to the Tomcat server. After starting Tomcat, you can view the Lag[i] (Landing AGI) page by visiting the corresponding port in your browser.
 
 For example: local port 8080：http://localhost:8080/
 
@@ -205,14 +209,14 @@ Local access:
 
 ## 6. Testing lags [i]
 
-Using the browser to visit Lag[i] page, you can use the provided sample code or API interface to test, such as text dialogue, speech recognition, text-to-speech, image generation and other functions.
+Using the browser to visit Lag[i] (Landing AGI) page, you can use the provided sample code or API interface to test, such as text dialogue, speech recognition, text-to-speech, image generation and other functions.
 
 Text Dialogue:
 ![img_2.png](images/img_2.png)
 
 ## 7. Model switching
 
-Lag[i] provides the ability to switch models dynamically. You can set up multiple models in the configuration file and select different models to switch according to your needs.
+Lag[i] (Landing AGI) provides the ability to switch models dynamically. You can set up multiple models in the configuration file and select different models to switch according to your needs.
 
 1.Modify the configuration switching model.
 
@@ -239,22 +243,23 @@ Online switching:
 
 ## 8. Extension
 
-If you are not satisfied with the large model or vector database that Lag[i] has adapted，You can refer to [Extension documentation](extend_cn.md)，Extend Lag[i] to fit your favorite large model or vector database.
+If you are not satisfied with the large model or vector database that Lag[i] (Landing AGI) has adapted，You can refer to [Extension documentation](extend_cn.md)，Extend Lag[i] (Landing AGI) to fit your favorite large model or vector database.
 
 ## 9. Training the model
 
-You can integrate internal data information into Lag[i] by uploading question-answer pairs, thereby customizing the training of a dedicated large model. During the model training process, the `distance` represents the similarity between your question and the uploaded question-answer pairs; the smaller the value, the higher the similarity. If the most matching question-answer pair identified by the model does not align with the actual intent of your question, you can further optimize the model’s performance by adding or deleting question-answer pairs. By continuously adjusting and optimizing your question-answer data, you can gradually enhance the model’s understanding of your questions, thus improving the accuracy of the system.
+You can integrate internal data information into Lag[i] (Landing AGI) by uploading question-answer pairs, thereby customizing the training of a dedicated large model. During the model training process, the `distance` represents the similarity between your question and the uploaded question-answer pairs; the smaller the value, the higher the similarity. If the most matching question-answer pair identified by the model does not align with the actual intent of your question, you can further optimize the model’s performance by adding or deleting question-answer pairs. By continuously adjusting and optimizing your question-answer data, you can gradually enhance the model’s understanding of your questions, thus improving the accuracy of the system.
 
 ### 1.Upload data
 
 You can use the `POST /training/pairing` endpoint to upload your own Q&A pairs.
 
 | Name         | Position | Type     | Required | Description  |
-|--------------|-------|--------------------|---------|---------|
-| category    | body  | string             | true    | The specified data class |
-| data         | body  | [object] or object | true    | Question and answer pairs of data, supporting objects or lists of objects  |
-| 》instruction | body  | string             | true    | The problem     |
-| 》output      | body  | string             | true    | The answer     |
+|--------------|-------|--------------------|----------|---------|
+| category    | body  | string             | true     | The specified data class |
+| data         | body  | [object] or object | true     | Question and answer pairs of data, supporting objects or lists of objects  |
+| 》instruction | body  | string             | true     | The problem     |
+| 》output      | body  | string             | true     | The answer     |
+| 》image       | body  | [object] or object | false    | A collection of related picture objects        |
 
 Example request is as follows(one to one):
 
@@ -263,7 +268,8 @@ Example request is as follows(one to one):
     "category": "default",
     "data": {
         "instruction": "What are the steps in the whole process of reapplying for a doctor's practice certificate?",
-        "output": "The process of reapplying for medical practice certificate includes five steps: declaration/receipt, acceptance, decision, certification and issuance."
+        "output": "The process of reapplying for medical practice certificate includes five steps: declaration/receipt, acceptance, decision, certification and issuance.",
+        "image":"[{\"path\": \"https://downloads.saasai.top/vector/szu/8EB8BC9D3E5F4D987BBDB93ECEB_58E46C1C_6DCB0.png\"}]"
     }
 }
 ```
@@ -276,7 +282,8 @@ Example batch request is as follows(one to one):
     "data": [
         {
             "instruction": "What are the steps in the whole process of reapplying for a doctor's practice certificate?",
-            "output": "The process of reapplying for medical practice certificate includes five steps: declaration/receipt, acceptance, decision, certification and issuance."
+            "output": "The process of reapplying for medical practice certificate includes five steps: declaration/receipt, acceptance, decision, certification and issuance.",
+            "image":"[{\"path\": \"https://downloads.saasai.top/vector/szu/8EB8BC9D3E5F4D987BBDB93ECEB_58E46C1C_6DCB0.png\"}]"
         },
         {
             "instruction": "The process of reapplying for medical practice certificate includes five steps:  declaration/receipt, acceptance, decision, certification and issuance.",
@@ -297,7 +304,8 @@ Example request is as follows(many to one):
                 "What are the steps in the whole process of reapplying for a doctor's practice certificate?",
                 "What are the links in the process of reapplying for doctor's practice certificate?"
             ],
-            "output": "The process of reapplying for medical practice certificate includes five steps: declaration/receipt, acceptance, decision, certification and issuance."
+            "output": "The process of reapplying for medical practice certificate includes five steps: declaration/receipt, acceptance, decision, certification and issuance.",
+            "image":"[{\"path\": \"https://downloads.saasai.top/vector/szu/8EB8BC9D3E5F4D987BBDB93ECEB_58E46C1C_6DCB0.png\"}]"
         }
     ]
 }
@@ -487,4 +495,4 @@ You can improve the model's understanding of your questions and thus enhance sys
 
 ## Summary
 
-With this tutorial, you have successfully integrated Lag[i] into your project and can start using the various AI features Lag[i] provides. Lag[i] 's power and flexible scalability can help you easily apply big model technology to your business, improving user experience and efficiency.
+With this tutorial, you have successfully integrated Lag[i] (Landing AGI) into your project and can start using the various AI features Lag[i] (Landing AGI) provides. Lag[i] (Landing AGI) 's power and flexible scalability can help you easily apply big model technology to your business, improving user experience and efficiency.

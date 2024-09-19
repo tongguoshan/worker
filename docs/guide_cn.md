@@ -1,67 +1,43 @@
 # 模型代码调用指南
 
 ## 概述
-- **介绍**：这份Lag[i]的功能调用指南旨在为您提供清晰、详细的指导，帮助您理解并使用项目中提供的各种 AI 功能。通过这份指南，您可以轻松地将文本对话、语音识别、文字转语音、图片生成等 AI 功能集成到您的应用程序中，实现更智能、更人性化的交互体验。
+- **介绍**：这份Lag[i] (联基) 的功能调用指南旨在为您提供清晰、详细的指导，帮助您理解并使用项目中提供的各种 AI 功能。通过这份指南，您可以轻松地将文本对话、语音识别、文字转语音、图片生成等 AI 功能集成到您的应用程序中，实现更智能、更人性化的交互体验。
 - **背景**：随着人工智能技术的飞速发展，越来越多的应用场景需要与 AI 模型进行交互，例如智能客服、语音助手、图像处理等。为了满足这些需求，本项目提供了多种 AI 功能，旨在帮助您轻松地将 AI 技术应用于您的业务场景，提升用户体验和效率。
 
 ## 开始之前
-- **配置要求**：您可以选择使用maven命令行工具进行封包，或者通过IntelliJ IDEA等主流的集成开发环境（IDE）进行运行。请确保您的JDK版本至少满足8的要求。    
-- **引入依赖**：调用相关功能需引入依赖，可以通过 Maven引入或直接导入jar的方式。   
-  ***Maven引入***：
-  - 在项目的pom.xml的dependencies中加入以下内容:
+
+您可以选择直接导入jar，或使用或使用maven引入依赖，通过IntelliJ IDEA等主流的集成开发环境（IDE）进行运行。
+
+**配置要求**：请确保您的JDK版本至少满足8的要求。
+
+### 一.直接导入jar 
+
+如您选择直接导入jar，您只需完成以下两步即可开始方法调用。
+
+- 1.下载jar：调用相关功能需下载Lag[i] (联基) 的jar包（[点击下载](https://downloads.saasai.top/lagi/lagi-core-1.0.1-jar-with-dependencies.jar)）。
+
+- 2.导入jar：调用相关功能需将jar放入您的lib目录下。
+
+ 注意：该jar内置默认配置文件lagi.yml，以外部配置优先解析。如您需要修改配置文件，可以直接下载配置[lagi.yml](https://github.com/landingbj/lagi/blob/main/lagi-web/src/main/resources/lagi.yml)，并将其放入您工程的resources目录下。（lagi.yml相关配置可以参考[配置文档](config_zh.md)）
+
+### 二.maven引入依赖
+
+如您选择maven引入依赖，您只需完成以下三步即可开始方法调用。
+
+- 1.导入jar：调用相关功能需下载并导入Lag[i] (联基) 的jar包，将它放入lib目录下。
+
+- 2.添加dependency：在项目的pom.xml的dependencies中加入以下内容:
     ```xml
-        <depxmlendency>
-          <groupId>com.landingbj</groupId>
-          <artifactId>lagi-core</artifactId>
-          <version>1.0.0</version>
-        </depxmlendency>
+        <dependency>
+            <groupId>com.landingbj</groupId>
+            <artifactId>lagi-core-1.0.0</artifactId>
+            <version>1.0</version>
+            <scope>system</scope>
+            <systemPath>${pom.basedir}/lib/lagi-core-1.0.0.jar</systemPath>
+        </dependency>
     ```
 
-  ***直接导入jar***：
-  - 直接导入lagi-core-1.0.0.jar或导入以下jar，将它们放入到lagi-core的libs目录下即可：
-    ```text
-        ai_bp.jar;
-        ai_core.jar;
-        ai_gather.jar;
-        ai_index.jar;
-        ai_qa.jar;
-    ```
-
-## Docker Run
-  - **Dockerfile**：
-    ```text
-          # 使用官方 Tomcat 镜像作为基础镜像
-          FROM tomcat:8.5.46-jdk8-openjdk
-          
-          # 设置工作目录
-          WORKDIR /usr/local/tomcat/webapps
-          
-          # 拷贝项目 WAR 文件到容器
-          COPY myproject.war .
-          
-          # 暴露 8080 端口
-          EXPOSE 8080
-          
-          # 启动命令
-          CMD ["catalina.sh", "run"]
-    ```
-  - **使用方式**：
-    - 构建镜像
-    >docker build -t myproject-tomcat:1.0 .
-    - 运行容器
-    >docker run -d -p 8080:8080 myproject-tomcat:1.0
-
-- **参数说明**：
-    
-    >-d：以守护进程方式运行容器。   
-
-    >-p 8080:8080：将宿主机的 8080 端口映射到容器的 8080 端口。  
-  
-    >myproject-tomcat:1.0：指定镜像名称和标签。   
-- **注意**：
-
-    确保您的 WAR 文件已经正确构建并位于当前目录中。
-    如果您有额外的配置或依赖项，可能需要修改 Dockerfile 或者使用 Docker Compose 进行更复杂的配置。
+注意：该jar内置默认配置文件lagi.yml，以外部配置优先解析。如您需要修改配置文件，可以直接下载配置[lagi.yml](https://github.com/landingbj/lagi/blob/main/lagi-web/src/main/resources/lagi.yml)，并将其放入您工程的resources目录下。（lagi.yml相关配置可以参考[配置文档](config_zh.md)）
 
 ## 调用示列
 - 为了快速上手，我们提供了一些[示例代码](https://github.com/landingbj/lagi/blob/main/lagi-core/src/test/java/ai/example/Demo.java)，您可以根据需要进行修改和调试。
@@ -298,7 +274,7 @@ void addFileVectors(File file, Map<String, Object> metadatas, String category) t
 > 调用示例：
 
 ```java
-import ai.migrate.service.VectorDbService;
+import ai.vector.VectorDbService;
 import ai.common.pojo.FileRequest;
 import ai.vector.VectorStoreService;
 
@@ -524,34 +500,36 @@ public void Test() {
 ## 快速集成进您的项目
 ### 方式一: 直接导入jar包
 
-您可以直接通过import JAR包的方式使用lag[i],将一个传统的业务转换为大模型的业务。
+您可以直接通过import JAR包的方式使用lag[i] (联基),将一个传统的业务转换为大模型的业务。
 
-1. **创建JAR包**：
-    - 可借助Maven等构建工具将lagi-core打包成JAR包。
+1. **下载JAR包**：
+    - 可直接下载lag[i] (联基) JAR包（[点击下载](https://downloads.saasai.top/lagi/lagi-core-1.0.1-jar-with-dependencies.jar)）。
 
 2. **导入JAR包**：
-    - 将生成的JAR包和libs目录下的所有JAR包复制到你的项目的lib目录中。
+    - 将下载的JAR包复制到你的项目的lib目录中。
 
-3. **导入并配置lagi.yml**：
-    - 将lagi-web中的配置文件lagi.yml复制到你的项目的resources目录下，并配置模型地址和API密钥。
+3. **构建和运行项目**：
+    - 在您的项目中，构建和运行项目。
 
-4. **构建和运行项目**：
-    - 在你的项目中，构建和运行项目。
+通过这种方式，您可以将lag[i] (联基) 工程以JAR包直接集成到你的项目中。
 
-通过这种方式，你可以将lag[i]工程以JAR包直接集成到你的项目中。
+**注意**：
+   - 该jar内置默认配置文件lagi.yml，以外部配置优先解析。
+   - 如您需要修改配置文件，您只需下载配置[lagi.yml](https://github.com/landingbj/lagi/blob/main/lagi-web/src/main/resources/lagi.yml)，将其放入您工程的resources目录下，即可开始启动构建项目了。
+   - lagi.yml详细配置可以参考[配置文档](config_zh.md)
 
 ### 方式二: 在Eclipse和IntelliJ中
 **Eclipse中集成项目**
 1. ***导入项目***：
     - 打开Eclipse。
     - 选择 File > Import...。
-    - 在 General > Existing Projects into Workspace 中选择lag[i]项目文件夹。
+    - 在 General > Existing Projects into Workspace 中选择lag[i] (联基) 项目文件夹。
     - 勾选你想要导入的项目，然后点击 Finish。
 
 2. ***构建路径和依赖***：
     - 在 Project Explorer 中找到你的项目。
     - 右键点击项目，选择 Properties。
-    - 在 Java Build Path > Libraries 中，点击 Add External JARs... 并选择lag[i]的libs目录下的所有JAR包。
+    - 在 Java Build Path > Libraries 中，点击 Add External JARs... 并选择lag[i] (联基) 的libs目录下的所有JAR包。
 
 3. ***同步项目***：
     - 在 Project Explorer 中右键点击项目，选择 Build Project。
@@ -560,13 +538,13 @@ public void Test() {
 1. ***导入项目***：
     - 打开IntelliJ IDEA。
     - 选择 File > Open。
-    - 选择lag[i]项目文件夹。
+    - 选择lag[i] (联基) 项目文件夹。
     - 点击 OK。
 
 2. ***添加依赖***：
     - 在 Project 窗口中找到你的项目。
     - 右键点击项目，选择 Add Dependency...。
-    - 选择 Module Dependency 或 Project Dependency，然后选择lag[i]项目的libs中的目录下的所有JAR包。
+    - 选择 Module Dependency 或 Project Dependency，然后选择lag[i] (联基) 的JAR包。
 
 3. ***同步项目***：
     - 在 Project 窗口中右键点击项目，选择 Build Project。
@@ -577,10 +555,10 @@ public void Test() {
 - **依赖冲突**：如果你遇到了依赖冲突，可能需要手动调整项目的构建路径或者使用IDE的依赖解析功能来解决冲突。
 - **注意**：这些步骤提供了一个大致的框架，具体的集成步骤可能会根据项目的复杂性和IDE的版本有所不同。
 ### 方式三:微服务docker
-微服务Docker集成是一种流行的方法，它允许你将你的应用打包成一个可部署的容器。你可以在Docker中引入一个lag[i]，并将它集成到自己的项目中。以下是一些基本步骤：  
-**1.准备lag[i]工程：**
-- 确保 lag[i] 工程的构建正确无误。
-- 使用Maven等构建工具将 lag[i] 打包成 WAR 文件。
+微服务Docker集成是一种流行的方法，它允许你将你的应用打包成一个可部署的容器。你可以在Docker中引入一个lag[i] (联基)，并将它集成到自己的项目中。以下是一些基本步骤：  
+**1.准备lag[i] (联基) 工程：**
+- 确保 lag[i] (联基) 工程的构建正确无误。
+- 使用Maven等构建工具将 lag[i] (联基) 打包成 WAR 文件。
 
 **2.创建一个Dockerfile文件，并添加以下内容：**
 ```text
@@ -610,7 +588,7 @@ public void Test() {
 请确保将your-image-name替换为你在步骤2中使用的镜像名称。
 
 **5.集成到自己项目中：**
-- 在你的项目中，创建一个Dockerfile，指定如何构建包含 lag[i] 镜像的容器。
+- 在你的项目中，创建一个Dockerfile，指定如何构建包含 lag[i] (联基) 镜像的容器。
 ```text
     FROM lagi-image
     # 添加你的项目目录到容器

@@ -17,7 +17,7 @@ import java.io.InputStreamReader;
 import java.nio.charset.Charset;
 
 /**
- * 第二道工序
+ * 第二道工序,測試用
  */
 public class Dispose2 {
     static {

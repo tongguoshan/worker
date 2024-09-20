@@ -24,6 +24,7 @@ public class Dispose2 {
         //initialize Profiles
         ContextLoader.loadContext();
     }
+    private static CompletionsService completionsService = new CompletionsService();
     /**
      * 第一步
      */
@@ -173,10 +174,7 @@ public class Dispose2 {
 
         chatCompletionRequest.setStream(false);
 
-        ZhipuAdapter zhipuAdapter = new ZhipuAdapter();
-        zhipuAdapter.setApiKey("a1f836d7579728d5b5e4bf5d875d416a.CZKqlbMhrwMdCMx2");
-        zhipuAdapter.setModel("glm-3-turbo");
-        ChatCompletionResult result = zhipuAdapter.completions(chatCompletionRequest);
+        ChatCompletionResult  result = completionsService.completions(chatCompletionRequest);
 
         return result.getChoices().get(0).getMessage().getContent();
     }
@@ -193,13 +191,7 @@ public class Dispose2 {
         // Set the stream parameter to false
         chatCompletionRequest.setStream(false);
 
-        ErnieAdapter ernieAdapter = new ErnieAdapter();
-        ernieAdapter.setModel("ERNIE-Speed-128K");
-        ernieAdapter.setApiKey("VAiqEsOvvzdBABAXbEgH4Rp2");
-        ernieAdapter.setAppId("98212938");
-        ernieAdapter.setSecretKey("8LzND1TKzeKTOwqpp18ugOtJNLyRsL78");
-
-        ChatCompletionResult result = ernieAdapter.completions(chatCompletionRequest);
+        ChatCompletionResult result =completionsService.completions(chatCompletionRequest);
 
         return result.getChoices().get(0).getMessage().getContent();
     }

@@ -1,10 +1,12 @@
 package ai.workerDispose.pojo;
 
-import lombok.Data;
-import lombok.ToString;
+import lombok.*;
 
-@Data
+@Builder
 @ToString
+@NoArgsConstructor
+@AllArgsConstructor
+@Data
 public class WriteCvs {
     private String id;
     private String name;

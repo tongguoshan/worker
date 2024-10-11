@@ -621,8 +621,8 @@ public class DictionaryProcessing {
     }
     public static void main(String[] args) {
 
-//        List<NodeValue> nodeValues = aiZindexUserDao.getNodeValue(1,10);
-//        System.out.println(nodeValues);
+        List<NodeValue> nodeValues = aiZindexUserDao.getNodeValue(1,10);
+        System.out.println(nodeValues);
 
 //        List<Dict> dictList = new ArrayList<>();
 //        Dict dict = new Dict();
@@ -637,9 +637,9 @@ public class DictionaryProcessing {
 //        for (Dict d : list){
 //            System.out.println(d);
 //        }
-            Integer number = 0;
-            double weight = 0.0;
-            weight = (number * 5.0 / 8.0) * 0.2 ;
-            System.out.println("最终的权重：" + weight);
+//            Integer number = 0;
+//            double weight = 0.0;
+//            weight = (number * 5.0 / 8.0) * 0.2 ;
+//            System.out.println("最终的权重：" + weight);
     }
 }

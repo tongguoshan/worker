@@ -1,12 +1,13 @@
 package ai.workerDispose.dao;
 
+import ai.database.impl.MysqlAdapter;
 import ai.workerDispose.pojo.NodeValue;
 import ai.workerDispose.pojo.WeightObj;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class AiZindexUserDao extends BaseDao{
+public class AiZindexUserDao extends MysqlAdapter {
     /**
      * 查询
      * @return

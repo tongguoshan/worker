@@ -38,6 +38,7 @@ public class ContextLoader {
             InputStream resourceAsStream = Files.newInputStream(Paths.get(filePath));
             loadContextByInputStream(resourceAsStream);
         } catch (IOException e) {
+            log.warn(e.getMessage());
             throw new RuntimeException(e);
         }
     }

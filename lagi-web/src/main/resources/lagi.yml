@@ -229,6 +229,14 @@ stores:
     enable: false
     algorithm: hash
 
+  database:
+    name: mysql
+    jdbc_url: jdbc:mysql://127.0.0.1:3306/ai?useSSL=false
+    driver_class_name: com.mysql.jdbc.Driver
+    username: your-username
+    password: your-password
+
+
 functions:
   embedding:
     - backend: qwen

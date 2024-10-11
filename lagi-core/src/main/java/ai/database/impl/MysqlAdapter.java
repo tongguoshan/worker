@@ -1,32 +1,28 @@
-package ai.workerDispose.dao;
+package ai.database.impl;
 
-import java.io.IOException;
-import java.io.InputStream;
+import ai.config.ContextLoader;
+import ai.database.pojo.MysqlJdbc;
+
 import java.lang.reflect.Field;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Properties;
 
-public class BaseDao {
+public class MysqlAdapter {
     // 定义连接数据库所需参数
     private static String driver;
     private static String url;
     private static String username;
     private static String password;
 
-    // 将db.properties加载至内存输入流中
     static {
-        Properties pro = new Properties();// 创建properties对象
-        InputStream in = BaseDao.class.getClassLoader().getResourceAsStream("ai-landingbj.properties");
+        MysqlJdbc database = ContextLoader.configuration.getStores().getDatabase();
         try {
-            pro.load(in);
-            driver = pro.getProperty("driverClassName");
-            url = pro.getProperty("jdbcUrl");
-            username = pro.getProperty("username");
-            password = pro.getProperty("password");
-
-        } catch (IOException e) {
+            driver = database.getDriverClassName();
+            url = database.getJdbcUrl();
+            username = database.getUsername();
+            password = database.getPassword();
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }

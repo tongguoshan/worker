@@ -1,5 +1,6 @@
 package ai.workerDispose.service;
 
+import ai.common.utils.ThreadPoolManager;
 import ai.config.ContextLoader;
 import ai.embedding.Embeddings;
 import ai.embedding.impl.QwenEmbeddings;
@@ -28,11 +29,14 @@ import org.junit.Test;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.sql.SQLOutput;
 import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -86,15 +90,16 @@ public class DictionaryProcessing {
      * @param indexDictValuesList
      */
     public void add(List<IndexDictValues> indexDictValuesList){
-        synchronized (lock) {
-            long now = System.currentTimeMillis();
-            if (now - lastExecutionTime < 30) { // 1秒内不允许再次执行
-                try {
-                    lock.wait(30 - (now - lastExecutionTime)); // 等待剩余时间
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
-            }
+        long start = System.currentTimeMillis();
+//        synchronized (lock) {
+//            long now = System.currentTimeMillis();
+//            if (now - lastExecutionTime < 1) {
+//                try {
+//                    lock.wait(1 - (now - lastExecutionTime));
+//                } catch (InterruptedException e) {
+//                    Thread.currentThread().interrupt();
+//                }
+//            }
         InstructionPairRequest instructionPairRequest = new InstructionPairRequest();
         instructionPairRequest.setCategory("dict");
 
@@ -110,57 +115,76 @@ public class DictionaryProcessing {
             }
             instructionData.setInstruction(list);
             instructionData.setOutput(indexDictValues.getPlainText());
-            instructionPairRequest.setData(Arrays.asList(instructionData));
+            if (list.get(0)!=null){
+                instructionPairRequest.setData(Arrays.asList(instructionData));
+            }
 
-        long timestamp = Instant.now().toEpochMilli();
+            long timestamp = Instant.now().toEpochMilli();
             List<InstructionData> instructionDataList = instructionPairRequest.getData();
             String category = instructionPairRequest.getCategory();
             String level = Optional.ofNullable(instructionPairRequest.getLevel()).orElse("user");
             Map<String, String> qaMap = new HashMap<>();
-            for (InstructionData data : instructionDataList) {
-                String output = data.getOutput().trim();
-                List<String> list1 = data.getInstruction();
-                for (int i = 0; i < list1.size(); i++) {
-                    String instruction = list1.get(i).trim();
-                    qaMap.put(instruction, output);
-                    Map<String, String> metadata = new HashMap<>();
-                    metadata.put("category", category);
-                    metadata.put("level", level);
-                    metadata.put("nid", nidlist.get(i).getNid().toString());
-                    metadata.put("did", indexDictValues.getDid().toString());
-                    metadata.put("plainText", indexDictValues.getPlainText());
-                    metadata.put("seq", Long.toString(timestamp));
-                    List<UpsertRecord> upsertRecords = new ArrayList<>();
-                    upsertRecords.add(UpsertRecord.newBuilder()
-                            .withMetadata(metadata)
-                            .withDocument(instruction)
-                            .build());
-                    upsertRecords.add(UpsertRecord.newBuilder()
-                            .withMetadata(new HashMap<>(metadata))
-                            .withDocument(output)
-                            .build());
-                    String s = instruction.replaceAll("\n","");
-                    VectorCacheLoader.put2L2(s, timestamp, output);
-                    vectorStoreService.upsertCustomVectors(upsertRecords, category, true);
-                }
-                for (String instruction : data.getInstruction()) {
+            if (instructionDataList!=null){
+                for (InstructionData data : instructionDataList) {
+                    String output = data.getOutput().trim();
+                    List<String> list1 = data.getInstruction();
+                    for (int i = 0; i < list1.size(); i++) {
+                        if (list1.get(i)!=null){
+                            String instruction = list1.get(i).trim();
+                            qaMap.put(instruction, output);
+                            Map<String, String> metadata = new HashMap<>();
+                            metadata.put("category", category);
+                            metadata.put("level", level);
+                            metadata.put("nid", nidlist.get(i).getNid().toString());
+                            metadata.put("did", indexDictValues.getDid().toString());
+                            metadata.put("plainText", indexDictValues.getPlainText());
+                            metadata.put("seq", Long.toString(timestamp));
+                            List<UpsertRecord> upsertRecords = new ArrayList<>();
+                            upsertRecords.add(UpsertRecord.newBuilder()
+                                    .withMetadata(metadata)
+                                    .withDocument(instruction)
+                                    .build());
+                            upsertRecords.add(UpsertRecord.newBuilder()
+                                    .withMetadata(new HashMap<>(metadata))
+                                    .withDocument(output)
+                                    .build());
+//                            String s = instruction.replaceAll("\n","");
+//                            VectorCacheLoader.put2L2(s, timestamp, output);
+                            boolean shibai = true;
+                            while (shibai){
+                                try {
+                                    vectorStoreService.upsertCustomVectors(upsertRecords, category, true);
+                                    shibai = false;
+                                }catch (Exception e){
+                                    try {
+                                        Thread.sleep(1000);
+                                    }catch (Exception e1){
 
+                                    }
+
+
+                                }
+                            }
+                        }
+                    }
+                    for (String instruction : data.getInstruction()) {
+
+                    }
                 }
             }
+            long end = System.currentTimeMillis();
+            // System.out.println("embedding escaped : "  + (end - start));
         }
-        System.out.println("新增成功！");
-            lastExecutionTime = System.currentTimeMillis();
-            lock.notifyAll(); // 唤醒所有等待的线程
-        }
+        //System.out.println("新增成功！");
+//            lastExecutionTime = System.currentTimeMillis();
+//            lock.notifyAll(); // 唤醒所有等待的线程
+//        }
     }
-
-    /**
-     * 单线程新增向量数据
-     */
     @Test
-    public void text1(){
-//从第10页到第20页，（包括10和20）
-        for (int i = 1; i <= 100; i++) {
+    public void TSE(){
+        //初始60000,70000,83497
+        for (int i = 85047; i <= 100000; i++) {
+            System.out.println("上传到第"+i+"页了");
             List<NodeValue> nodeValues = aiZindexUserDao.getNodeValue(i,10);
             System.out.println(nodeValues.size());
             List<IndexDictValues> indexNodeValuesList = new ArrayList<>();
@@ -193,6 +217,511 @@ public class DictionaryProcessing {
             //add(indexNodeValuesList);
         }
     }
+
+    public void tianjia(int qi,int ting,String name){
+        //初始60000,70000,
+        for (int i = qi; i <= ting; i++) {
+            System.out.println(name+"上传到第"+i+"页了");
+            List<NodeValue> nodeValues = aiZindexUserDao.getNodeValue(i,10);
+            System.out.println(nodeValues.size());
+            List<IndexDictValues> indexNodeValuesList = new ArrayList<>();
+            nodeValues.stream().forEach(nv -> {
+                IndexDictValues obj = null;
+                for (IndexDictValues indexNodeValues : indexNodeValuesList) {
+                    if (indexNodeValues.getDid().equals(nv.getDid())) {
+                        obj = indexNodeValues;
+                        break;
+                    }
+                }
+
+                if (obj != null){
+                    Node node = new Node();
+                    BeanUtil.copyProperties(nv,node);
+                    List<Node> dodeList = obj.getNodes();
+                    dodeList.add(node);
+                    obj.setNodes(dodeList);
+                } else {
+                    IndexDictValues indexNodeValues = new IndexDictValues();
+                    BeanUtil.copyProperties(nv,indexNodeValues);
+                    Node node = new Node();
+                    BeanUtil.copyProperties(nv,node);
+                    indexNodeValues.setNodes(Lists.newArrayList(node));
+                    indexNodeValuesList.add(indexNodeValues);
+                }
+
+            });
+            indexNodeValuesList.forEach(indexNodeValues -> add(Lists.newArrayList(indexNodeValues)));
+            //add(indexNodeValuesList);
+        }
+    }
+    @Test
+    public void main111(){
+//        AtomicInteger c1 = new AtomicInteger(0);
+//        AtomicInteger c2 = new AtomicInteger(0);
+//        AtomicInteger c3 = new AtomicInteger(0);
+//        AtomicInteger c4 = new AtomicInteger(0);
+//        AtomicInteger c5 = new AtomicInteger(0);
+//        AtomicInteger c6 = new AtomicInteger(0);
+//        AtomicInteger c7 = new AtomicInteger(0);
+//        AtomicInteger c8 = new AtomicInteger(0);
+//        AtomicInteger c9 = new AtomicInteger(0);
+//        AtomicInteger c10 = new AtomicInteger(0);
+//        AtomicInteger c11 = new AtomicInteger(0);
+//        AtomicInteger c12 = new AtomicInteger(0);
+//        ThreadPoolManager.registerExecutor("api-test");
+//        ExecutorService executor = ThreadPoolManager.getExecutor("api-test");
+//        for (int i = 0; i < 12; i++) {
+//            executor.submit(()->{})
+//        }
+        CompletableFuture<Void> future1 = CompletableFuture.runAsync(() -> tianjia( 34714, 34724,"线程1"));
+        CompletableFuture<Void> future2 = CompletableFuture.runAsync(() -> tianjia( 34725, 34735,"线程2"));
+        CompletableFuture<Void> future3 = CompletableFuture.runAsync(() -> tianjia( 34736, 34746,"线程3"));
+        CompletableFuture<Void> future4 = CompletableFuture.runAsync(() -> tianjia( 34747, 34757,"线程4"));
+        CompletableFuture<Void> future5 = CompletableFuture.runAsync(() -> tianjia( 34758, 34768,"线程5"));
+        CompletableFuture<Void> future6 = CompletableFuture.runAsync(() -> tianjia( 34769, 34779,"线程6"));
+        CompletableFuture<Void> future7 = CompletableFuture.runAsync(() -> tianjia( 34780, 34790,"线程7"));
+        CompletableFuture<Void> future8 = CompletableFuture.runAsync(() -> tianjia( 34791, 34801,"线程8"));
+        CompletableFuture<Void> future9 = CompletableFuture.runAsync(() -> tianjia( 34802, 34812,"线程9"));
+        CompletableFuture<Void> future10 = CompletableFuture.runAsync(() -> tianjia( 34813, 34822,"线程10"));
+
+        CompletableFuture.allOf(future1,future2,future3,future4,future5,future6,future7,future8,future9,future10);
+
+    }
+
+
+    @Test
+    public void TSE3(){
+        //初始50000，60000跑完了---从100001到140000，，，，103996
+        for (int i = 105535; i <= 140000; i++) {
+            System.out.println("上传到第"+i+"页了");
+            List<NodeValue> nodeValues = aiZindexUserDao.getNodeValue(i,10);
+            System.out.println(nodeValues.size());
+            List<IndexDictValues> indexNodeValuesList = new ArrayList<>();
+            nodeValues.stream().forEach(nv -> {
+                IndexDictValues obj = null;
+                for (IndexDictValues indexNodeValues : indexNodeValuesList) {
+                    if (indexNodeValues.getDid().equals(nv.getDid())) {
+                        obj = indexNodeValues;
+                        break;
+                    }
+                }
+
+                if (obj != null){
+                    Node node = new Node();
+                    BeanUtil.copyProperties(nv,node);
+                    List<Node> dodeList = obj.getNodes();
+                    dodeList.add(node);
+                    obj.setNodes(dodeList);
+                } else {
+                    IndexDictValues indexNodeValues = new IndexDictValues();
+                    BeanUtil.copyProperties(nv,indexNodeValues);
+                    Node node = new Node();
+                    BeanUtil.copyProperties(nv,node);
+                    indexNodeValues.setNodes(Lists.newArrayList(node));
+                    indexNodeValuesList.add(indexNodeValues);
+                }
+
+            });
+            indexNodeValuesList.forEach(indexNodeValues -> add(Lists.newArrayList(indexNodeValues)));
+            //add(indexNodeValuesList);
+        }
+    }
+
+    /**
+     * 单线程新增向量数据
+     */
+    @Test
+    public void text1(){
+//从第10页到第20页，（包括10和20）---2100，，30538
+        for (int i = 32100; i <= 49999; i++) {
+            System.out.println("上传到第"+i+"页了");
+            List<NodeValue> nodeValues = aiZindexUserDao.getNodeValue(i,10);
+            System.out.println(nodeValues.size());
+            List<IndexDictValues> indexNodeValuesList = new ArrayList<>();
+            nodeValues.stream().forEach(nv -> {
+                IndexDictValues obj = null;
+                for (IndexDictValues indexNodeValues : indexNodeValuesList) {
+                    if (indexNodeValues.getDid().equals(nv.getDid())) {
+                        obj = indexNodeValues;
+                        break;
+                    }
+                }
+
+                if (obj != null){
+                    Node node = new Node();
+                    BeanUtil.copyProperties(nv,node);
+                    List<Node> dodeList = obj.getNodes();
+                    dodeList.add(node);
+                    obj.setNodes(dodeList);
+                } else {
+                    IndexDictValues indexNodeValues = new IndexDictValues();
+                    BeanUtil.copyProperties(nv,indexNodeValues);
+                    Node node = new Node();
+                    BeanUtil.copyProperties(nv,node);
+                    indexNodeValues.setNodes(Lists.newArrayList(node));
+                    indexNodeValuesList.add(indexNodeValues);
+                }
+
+            });
+            indexNodeValuesList.forEach(indexNodeValues -> add(Lists.newArrayList(indexNodeValues)));
+            //add(indexNodeValuesList);
+        }
+    }
+
+    /**
+     * 单线程新增向量数据
+     */
+    @Test
+    public void text11(){
+//从第140001开始，180000
+        for (int i = 145416; i <= 180000; i++) {
+            System.out.println("上传到第"+i+"页了");
+            List<NodeValue> nodeValues = aiZindexUserDao.getNodeValue(i,10);
+            System.out.println(nodeValues.size());
+            List<IndexDictValues> indexNodeValuesList = new ArrayList<>();
+            nodeValues.stream().forEach(nv -> {
+                IndexDictValues obj = null;
+                for (IndexDictValues indexNodeValues : indexNodeValuesList) {
+                    if (indexNodeValues.getDid().equals(nv.getDid())) {
+                        obj = indexNodeValues;
+                        break;
+                    }
+                }
+
+                if (obj != null){
+                    Node node = new Node();
+                    BeanUtil.copyProperties(nv,node);
+                    List<Node> dodeList = obj.getNodes();
+                    dodeList.add(node);
+                    obj.setNodes(dodeList);
+                } else {
+                    IndexDictValues indexNodeValues = new IndexDictValues();
+                    BeanUtil.copyProperties(nv,indexNodeValues);
+                    Node node = new Node();
+                    BeanUtil.copyProperties(nv,node);
+                    indexNodeValues.setNodes(Lists.newArrayList(node));
+                    indexNodeValuesList.add(indexNodeValues);
+                }
+
+            });
+            indexNodeValuesList.forEach(indexNodeValues -> add(Lists.newArrayList(indexNodeValues)));
+            //add(indexNodeValuesList);
+        }
+    }
+
+    /**
+     * 单线程新增向量数据
+     */
+    @Test
+    public void text12(){
+//从第180001开始，220000----184936
+        for (int i = 185465; i <= 220000; i++) {
+            System.out.println("上传到第"+i+"页了");
+            List<NodeValue> nodeValues = aiZindexUserDao.getNodeValue(i,10);
+            System.out.println(nodeValues.size());
+            List<IndexDictValues> indexNodeValuesList = new ArrayList<>();
+            nodeValues.stream().forEach(nv -> {
+                IndexDictValues obj = null;
+                for (IndexDictValues indexNodeValues : indexNodeValuesList) {
+                    if (indexNodeValues.getDid().equals(nv.getDid())) {
+                        obj = indexNodeValues;
+                        break;
+                    }
+                }
+
+                if (obj != null){
+                    Node node = new Node();
+                    BeanUtil.copyProperties(nv,node);
+                    List<Node> dodeList = obj.getNodes();
+                    dodeList.add(node);
+                    obj.setNodes(dodeList);
+                } else {
+                    IndexDictValues indexNodeValues = new IndexDictValues();
+                    BeanUtil.copyProperties(nv,indexNodeValues);
+                    Node node = new Node();
+                    BeanUtil.copyProperties(nv,node);
+                    indexNodeValues.setNodes(Lists.newArrayList(node));
+                    indexNodeValuesList.add(indexNodeValues);
+                }
+
+            });
+            indexNodeValuesList.forEach(indexNodeValues -> add(Lists.newArrayList(indexNodeValues)));
+            //add(indexNodeValuesList);
+        }
+    }
+
+    @Test
+    public void text13(){
+//从第220001开始，260000
+        for (int i = 225434; i <= 260000; i++) {
+            System.out.println("上传到第"+i+"页了");
+            List<NodeValue> nodeValues = aiZindexUserDao.getNodeValue(i,10);
+            System.out.println(nodeValues.size());
+            List<IndexDictValues> indexNodeValuesList = new ArrayList<>();
+            nodeValues.stream().forEach(nv -> {
+                IndexDictValues obj = null;
+                for (IndexDictValues indexNodeValues : indexNodeValuesList) {
+                    if (indexNodeValues.getDid().equals(nv.getDid())) {
+                        obj = indexNodeValues;
+                        break;
+                    }
+                }
+
+                if (obj != null){
+                    Node node = new Node();
+                    BeanUtil.copyProperties(nv,node);
+                    List<Node> dodeList = obj.getNodes();
+                    dodeList.add(node);
+                    obj.setNodes(dodeList);
+                } else {
+                    IndexDictValues indexNodeValues = new IndexDictValues();
+                    BeanUtil.copyProperties(nv,indexNodeValues);
+                    Node node = new Node();
+                    BeanUtil.copyProperties(nv,node);
+                    indexNodeValues.setNodes(Lists.newArrayList(node));
+                    indexNodeValuesList.add(indexNodeValues);
+                }
+
+            });
+            indexNodeValuesList.forEach(indexNodeValues -> add(Lists.newArrayList(indexNodeValues)));
+            //add(indexNodeValuesList);
+        }
+    }
+
+    @Test
+    public void text14(){
+//从第260001开始，300000
+        for (int i = 265426; i <= 300000; i++) {
+            System.out.println("上传到第"+i+"页了");
+            List<NodeValue> nodeValues = aiZindexUserDao.getNodeValue(i,10);
+            System.out.println(nodeValues.size());
+            List<IndexDictValues> indexNodeValuesList = new ArrayList<>();
+            nodeValues.stream().forEach(nv -> {
+                IndexDictValues obj = null;
+                for (IndexDictValues indexNodeValues : indexNodeValuesList) {
+                    if (indexNodeValues.getDid().equals(nv.getDid())) {
+                        obj = indexNodeValues;
+                        break;
+                    }
+                }
+
+                if (obj != null){
+                    Node node = new Node();
+                    BeanUtil.copyProperties(nv,node);
+                    List<Node> dodeList = obj.getNodes();
+                    dodeList.add(node);
+                    obj.setNodes(dodeList);
+                } else {
+                    IndexDictValues indexNodeValues = new IndexDictValues();
+                    BeanUtil.copyProperties(nv,indexNodeValues);
+                    Node node = new Node();
+                    BeanUtil.copyProperties(nv,node);
+                    indexNodeValues.setNodes(Lists.newArrayList(node));
+                    indexNodeValuesList.add(indexNodeValues);
+                }
+
+            });
+            indexNodeValuesList.forEach(indexNodeValues -> add(Lists.newArrayList(indexNodeValues)));
+            //add(indexNodeValuesList);
+        }
+    }
+
+    @Test
+    public void text15(){
+//从第 300001 开始，340000
+        for (int i = 305385; i <= 340000; i++) {
+            System.out.println("上传到第"+i+"页了");
+            List<NodeValue> nodeValues = aiZindexUserDao.getNodeValue(i,10);
+            System.out.println(nodeValues.size());
+            List<IndexDictValues> indexNodeValuesList = new ArrayList<>();
+            nodeValues.stream().forEach(nv -> {
+                IndexDictValues obj = null;
+                for (IndexDictValues indexNodeValues : indexNodeValuesList) {
+                    if (indexNodeValues.getDid().equals(nv.getDid())) {
+                        obj = indexNodeValues;
+                        break;
+                    }
+                }
+
+                if (obj != null){
+                    Node node = new Node();
+                    BeanUtil.copyProperties(nv,node);
+                    List<Node> dodeList = obj.getNodes();
+                    dodeList.add(node);
+                    obj.setNodes(dodeList);
+                } else {
+                    IndexDictValues indexNodeValues = new IndexDictValues();
+                    BeanUtil.copyProperties(nv,indexNodeValues);
+                    Node node = new Node();
+                    BeanUtil.copyProperties(nv,node);
+                    indexNodeValues.setNodes(Lists.newArrayList(node));
+                    indexNodeValuesList.add(indexNodeValues);
+                }
+
+            });
+            indexNodeValuesList.forEach(indexNodeValues -> add(Lists.newArrayList(indexNodeValues)));
+            //add(indexNodeValuesList);
+        }
+    }
+
+    @Test
+    public void text16(){
+//从第 340001 开始，380000
+        for (int i = 345367; i <= 380000; i++) {
+            System.out.println("上传到第"+i+"页了");
+            List<NodeValue> nodeValues = aiZindexUserDao.getNodeValue(i,10);
+            System.out.println(nodeValues.size());
+            List<IndexDictValues> indexNodeValuesList = new ArrayList<>();
+            nodeValues.stream().forEach(nv -> {
+                IndexDictValues obj = null;
+                for (IndexDictValues indexNodeValues : indexNodeValuesList) {
+                    if (indexNodeValues.getDid().equals(nv.getDid())) {
+                        obj = indexNodeValues;
+                        break;
+                    }
+                }
+
+                if (obj != null){
+                    Node node = new Node();
+                    BeanUtil.copyProperties(nv,node);
+                    List<Node> dodeList = obj.getNodes();
+                    dodeList.add(node);
+                    obj.setNodes(dodeList);
+                } else {
+                    IndexDictValues indexNodeValues = new IndexDictValues();
+                    BeanUtil.copyProperties(nv,indexNodeValues);
+                    Node node = new Node();
+                    BeanUtil.copyProperties(nv,node);
+                    indexNodeValues.setNodes(Lists.newArrayList(node));
+                    indexNodeValuesList.add(indexNodeValues);
+                }
+
+            });
+            indexNodeValuesList.forEach(indexNodeValues -> add(Lists.newArrayList(indexNodeValues)));
+            //add(indexNodeValuesList);
+        }
+    }
+
+    @Test
+    public void text17(){
+//从第 380001 开始，420000
+        for (int i = 385344; i <= 420000; i++) {
+            System.out.println("上传到第"+i+"页了");
+            List<NodeValue> nodeValues = aiZindexUserDao.getNodeValue(i,10);
+            System.out.println(nodeValues.size());
+            List<IndexDictValues> indexNodeValuesList = new ArrayList<>();
+            nodeValues.stream().forEach(nv -> {
+                IndexDictValues obj = null;
+                for (IndexDictValues indexNodeValues : indexNodeValuesList) {
+                    if (indexNodeValues.getDid().equals(nv.getDid())) {
+                        obj = indexNodeValues;
+                        break;
+                    }
+                }
+
+                if (obj != null){
+                    Node node = new Node();
+                    BeanUtil.copyProperties(nv,node);
+                    List<Node> dodeList = obj.getNodes();
+                    dodeList.add(node);
+                    obj.setNodes(dodeList);
+                } else {
+                    IndexDictValues indexNodeValues = new IndexDictValues();
+                    BeanUtil.copyProperties(nv,indexNodeValues);
+                    Node node = new Node();
+                    BeanUtil.copyProperties(nv,node);
+                    indexNodeValues.setNodes(Lists.newArrayList(node));
+                    indexNodeValuesList.add(indexNodeValues);
+                }
+
+            });
+            indexNodeValuesList.forEach(indexNodeValues -> add(Lists.newArrayList(indexNodeValues)));
+            //add(indexNodeValuesList);
+        }
+    }
+
+    @Test
+    public void text18(){
+//从第 420001 开始，460001
+        for (int i = 425318; i <= 460001; i++) {
+            System.out.println("上传到第"+i+"页了");
+            List<NodeValue> nodeValues = aiZindexUserDao.getNodeValue(i,10);
+            System.out.println(nodeValues.size());
+            List<IndexDictValues> indexNodeValuesList = new ArrayList<>();
+            nodeValues.stream().forEach(nv -> {
+                IndexDictValues obj = null;
+                for (IndexDictValues indexNodeValues : indexNodeValuesList) {
+                    if (indexNodeValues.getDid().equals(nv.getDid())) {
+                        obj = indexNodeValues;
+                        break;
+                    }
+                }
+
+                if (obj != null){
+                    Node node = new Node();
+                    BeanUtil.copyProperties(nv,node);
+                    List<Node> dodeList = obj.getNodes();
+                    dodeList.add(node);
+                    obj.setNodes(dodeList);
+                } else {
+                    IndexDictValues indexNodeValues = new IndexDictValues();
+                    BeanUtil.copyProperties(nv,indexNodeValues);
+                    Node node = new Node();
+                    BeanUtil.copyProperties(nv,node);
+                    indexNodeValues.setNodes(Lists.newArrayList(node));
+                    indexNodeValuesList.add(indexNodeValues);
+                }
+
+            });
+            indexNodeValuesList.forEach(indexNodeValues -> add(Lists.newArrayList(indexNodeValues)));
+            //add(indexNodeValuesList);
+        }
+    }
+
+
+    @Test
+    public void text19(){
+//从第 460002 开始，500000
+        for (int i = 461687; i <= 500000; i++) {
+            System.out.println("上传到第"+i+"页了");
+            List<NodeValue> nodeValues = aiZindexUserDao.getNodeValue(i,10);
+            System.out.println(nodeValues.size());
+            List<IndexDictValues> indexNodeValuesList = new ArrayList<>();
+            nodeValues.stream().forEach(nv -> {
+                IndexDictValues obj = null;
+                for (IndexDictValues indexNodeValues : indexNodeValuesList) {
+                    if (indexNodeValues.getDid().equals(nv.getDid())) {
+                        obj = indexNodeValues;
+                        break;
+                    }
+                }
+
+                if (obj != null){
+                    Node node = new Node();
+                    BeanUtil.copyProperties(nv,node);
+                    List<Node> dodeList = obj.getNodes();
+                    dodeList.add(node);
+                    obj.setNodes(dodeList);
+                } else {
+                    IndexDictValues indexNodeValues = new IndexDictValues();
+                    BeanUtil.copyProperties(nv,indexNodeValues);
+                    Node node = new Node();
+                    BeanUtil.copyProperties(nv,node);
+                    indexNodeValues.setNodes(Lists.newArrayList(node));
+                    indexNodeValuesList.add(indexNodeValues);
+                }
+
+            });
+            indexNodeValuesList.forEach(indexNodeValues -> add(Lists.newArrayList(indexNodeValues)));
+            //add(indexNodeValuesList);
+        }
+    }
+
+    public void test20(){
+
+    }
+
+
 
     /**
      * 线程池，多线程新增向量数据

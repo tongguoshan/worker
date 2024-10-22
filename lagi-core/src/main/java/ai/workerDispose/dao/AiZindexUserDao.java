@@ -14,10 +14,10 @@ public class AiZindexUserDao extends MysqlAdapter {
      */
     public List<NodeValue> getNodeValue(int pageNumber, int pageSize) {
         int pageNumbers =(pageNumber - 1) * pageSize;
-        String sql = "SELECT aun.did,aun.plain_text AS plainText,azu.nid,aud.comments AS node,azu.weight " +
-                " FROM (SELECT * FROM ai_unindex_dict1 ORDER BY did LIMIT ?,?) aun\n" +
-                " LEFT JOIN ai_zindex_user azu ON aun.did = azu.did\n" +
-                " LEFT JOIN ai_unindex_node aud ON azu.nid = aud.nid";
+        String sql = "SELECT azu.did,aud.plain_text AS plainText,azu.nid,aun.comments AS node,azu.weight " +
+                " FROM (SELECT * FROM ai_zindex_user ORDER BY did LIMIT ?,?) azu \n" +
+                " LEFT JOIN ai_unindex_dict aud ON aud.did = azu.did \n" +
+                " LEFT JOIN ai_unindex_node aun ON aun.nid = azu.nid;";
         List<NodeValue> list = select(NodeValue.class, sql,pageNumbers, pageSize);
         return list.size() > 0 && list != null ? list : new ArrayList<>();
     }

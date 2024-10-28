@@ -48,7 +48,6 @@ public class KimiThread {
         ChatCompletionRequest chatCompletionRequest = new ChatCompletionRequest();
         chatCompletionRequest.setTemperature(0.8);
         chatCompletionRequest.setMax_tokens(1024);
-        chatCompletionRequest.setCategory("default");
         ChatMessage message = new ChatMessage();
         message.setRole("user");
         message.setContent(content);

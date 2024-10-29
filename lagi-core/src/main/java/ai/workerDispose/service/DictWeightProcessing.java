@@ -20,6 +20,7 @@ import com.google.gson.Gson;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -35,21 +36,18 @@ public class DictWeightProcessing {
     private final Gson gson = new Gson();
     private static final AiServiceCall packageCall = new AiServiceCall();
 
+    private final String datePattern = "yyyy-MM-dd HH:mm:ss.SSS";
+    private final SimpleDateFormat simpleDateFormat = new SimpleDateFormat(datePattern);
+
     private static final String VECTOR_QUERY_URL = "https://lagi.saasai.top/v1/vector/query";
     private static final String CATEGORY = "dict";
-    private static final int START_PAGE = 4;
-    private static final int END_PAGE = 100;
-    private static final int PAGE_SIZE = 1;
+    private static final double QUERY_SIMILARITY = 0.1;
 
-    public static void main(String[] args) {
-        new DictWeightProcessing().dictWeightProcess();
-    }
-
-    private void dictWeightProcess() {
-        for (int i = START_PAGE; i <= END_PAGE; i++) {
-            System.out.println("\n\n当前页数：" + i + "，结束页数：" + END_PAGE);
+    public void dictWeightProcess(int startPage, int endPage, int pageSize) {
+        for (int i = startPage; i <= endPage; i++) {
+            System.out.println("\n\nCurrent page is " + i + ", time is " + simpleDateFormat.format(new Date()));
             DictWeightProcessing dictionaryProcessing = new DictWeightProcessing();
-            List<NodeValue> nodeValues = aiZindexUserDao.getNodeValue(i, PAGE_SIZE);
+            List<NodeValue> nodeValues = aiZindexUserDao.getNodeValue(i, pageSize);
             List<IndexDictValues> indexDictValuesList = new ArrayList<>();
             nodeValues.forEach(nv -> {
                 IndexDictValues obj = null;
@@ -81,9 +79,9 @@ public class DictWeightProcessing {
                 if (!nodeList.isEmpty()) {
                     List<Node> nodes = fieldRating(indexDictValues.getPlainText(), removeDuplicates(nodeList));
                     nodes = removeDuplicates(nodes);
-                    for (Node node1 : nodes) {
-                        System.out.println("传入nid" + indexDictValues.getDid() + "\n 传入did" + node1.getNid() + "权重：" + node1.getWeight());
-                        updateWeight(node1.getNid(), indexDictValues.getDid(), node1.getWeight());
+                    for (Node node : nodes) {
+                        System.out.println("did=" + indexDictValues.getDid() + " uid=" + node.getNid() + " weight=" + node.getWeight());
+                        updateWeight(node.getNid(), indexDictValues.getDid(), node.getWeight());
                     }
                 }
             }
@@ -120,6 +118,7 @@ public class DictWeightProcessing {
         return list1;
     }
 
+
     private List<IndexRecord> queryRemote(IndexDictValues dictValue) throws IOException {
         int n = 32;
         Map<String, String> where = new HashMap<>();
@@ -139,7 +138,7 @@ public class DictWeightProcessing {
                 n = -1;
             }
             list = list.stream()
-                    .filter(record -> record.getDistance() < 0.1)
+                    .filter(record -> record.getDistance() < QUERY_SIMILARITY)
                     .collect(Collectors.toList());
             if (list.size() == n) {
                 n = n * 2;
@@ -166,10 +165,10 @@ public class DictWeightProcessing {
         for (IndexRecord indexRecord : list1) {
             String nid = (String) indexRecord.getMetadata().get("nid");
             Node dict = new Node();
-            WeightObj weightObj = aiZindexUserDao.selectWeight(Integer.parseInt(nid), did);
+//            WeightObj weightObj = aiZindexUserDao.selectWeight(Integer.parseInt(nid), did);
             dict.setNid(Integer.parseInt(nid));
             dict.setNode(indexRecord.getDocument());
-            dict.setWeight(weightObj.getWeight());
+//            dict.setWeight(weightObj.getWeight());
             dictList.add(dict);
         }
         return dictList;
@@ -183,9 +182,9 @@ public class DictWeightProcessing {
                 "4. 第四个句子从事实陈述的角度来造句" +
                 "5. 第五个从该词比喻的角度造句" +
                 "6. 第六个从该词情感表达角度造句" +
-                "6. 第七个从借代的角度造句" +
-                "7. 每个句子必须包含“" + PlainTextValue + "”字样。\n" +
-                "8. 每个句子应从不同的角度呈现“" + PlainTextValue + "”的特性，不重复内容，不使用相同的文本结构和套路。每个句子最好都有自己独立的上下文。\n" +
+                "7. 第七个从借代的角度造句" +
+                "8. 每个句子必须包含“" + PlainTextValue + "”字样。\n" +
+                "9. 每个句子应从不同的角度呈现“" + PlainTextValue + "”的特性，不重复内容，不使用相同的文本结构和套路。每个句子最好都有自己独立的上下文。\n" +
                 "生成结果中仅需要这九个句子，无需额外的提示或说明。";
         result = chat(result);
 
@@ -207,10 +206,11 @@ public class DictWeightProcessing {
                 continue;
             }
             System.out.println("第一次回答的内容：" + result);
-            String modifiedText = replaceIgnoreCase(result, PlainTextValue, node.getNode()) + "\n 10.有些时候“" + PlainTextValue + "”等同于“" + node.getNode() + "”。";
+            String modifiedText = replaceIgnoreCase(result, PlainTextValue, node.getNode()) + "\n10.有些时候“" + PlainTextValue + "”等同于“" + node.getNode() + "”。";
 
-            String prompt = "在下面的句子中：\n" + modifiedText + "\n有几个句子的：“" + node.getNode() + "”是使用比较恰当的，并且它的表意和解释都是的正确的。" +
-                    "(请先告诉我有“0个”或“1个”或“2个”或“3个”或“4个”或“5个”或“6个”或“7个”或“8个”或“9个”或“10个”是正确的，再告诉我原因，字数控制在100字以内，例如：有1个是正确的)。";
+            String prompt = "-----------------\n" + modifiedText + "\n-----------------\n" +
+                    "以上提供的几个句子之中，有几个句子中的“" + node.getNode() + "”是使用比较恰当的，并且它的表意和解释都是的正确的。" +
+                    "回答只需要数量，使用阿拉伯数字，返回结果示例：0个、1个、2个、3个、4个、5个、6个、7个、8个、9个和10个。";
 
             System.out.println("第二次提问的内容: " + prompt);
             String result1 = chat(prompt);

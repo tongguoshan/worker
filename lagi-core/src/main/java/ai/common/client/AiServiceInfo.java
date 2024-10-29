@@ -24,6 +24,7 @@ public class AiServiceInfo {
     public static final String WSVdoUrl = AI_SERVER + "/VideoService";
     public static final String WSVocUrl = AI_SERVER + "/VoiceService";
 
-    public static final String GWSLrnUrl = AI_SERVER + ":8899" + "/LearnService";;
+    public static final String GWSLrnUrl = AI_SERVER + ":8899" + "/LearnService";
+//    public static final String GWSUniUrl = WSUniUrl;
     public static final String GWSUniUrl = AI_SERVER + ":8899" + "/UniService";
 }

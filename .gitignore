@@ -39,4 +39,5 @@ build/
 /tomcat*
 /lagi-web/src/main/webapp/static/
 /lagi-examples/
+/lagi-core/bin
 /lagi-web/bin

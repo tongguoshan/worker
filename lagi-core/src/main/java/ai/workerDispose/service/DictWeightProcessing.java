@@ -74,8 +74,9 @@ public class DictWeightProcessing {
             });
 
             for (IndexDictValues indexDictValues : indexDictValuesList) {
-                List<IndexRecord> list1 = dictionaryProcessing.query(indexDictValues);
-                List<Node> nodeList = indexRecordTONode(list1, indexDictValues.getDid());
+                List<IndexRecord> nodeQueryList = dictionaryProcessing.query(indexDictValues);
+                System.out.println("nodeQueryList size is " + nodeQueryList.size());
+                List<Node> nodeList = indexRecordTONode(nodeQueryList, indexDictValues.getDid());
                 if (!nodeList.isEmpty()) {
                     List<Node> nodes = fieldRating(indexDictValues.getPlainText(), removeDuplicates(nodeList));
                     nodes = removeDuplicates(nodes);

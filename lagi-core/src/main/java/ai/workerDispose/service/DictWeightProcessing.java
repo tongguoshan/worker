@@ -47,27 +47,27 @@ public class DictWeightProcessing {
         for (int i = startPage; i <= endPage; i++) {
             System.out.println("\n\nCurrent page is " + i + ", time is " + simpleDateFormat.format(new Date()));
             DictWeightProcessing dictionaryProcessing = new DictWeightProcessing();
-            List<NodeValue> nodeValues = aiZindexUserDao.getNodeValue(i, pageSize);
+            List<DictValue> dictList = aiZindexUserDao.getDictList(i, pageSize);
             List<IndexDictValues> indexDictValuesList = new ArrayList<>();
-            nodeValues.forEach(nv -> {
+            dictList.forEach(dict -> {
                 IndexDictValues obj = null;
                 for (IndexDictValues indexDictValues : indexDictValuesList) {
-                    if (indexDictValues.getDid().equals(nv.getDid())) {
+                    if (indexDictValues.getDid().equals(dict.getDid())) {
                         obj = indexDictValues;
                         break;
                     }
                 }
                 if (obj != null) {
                     Node node = new Node();
-                    BeanUtil.copyProperties(nv, node);
+                    BeanUtil.copyProperties(dict, node);
                     List<Node> nodeList = obj.getNodes();
                     nodeList.add(node);
                     obj.setNodes(nodeList);
                 } else {
                     IndexDictValues indexNodeValues = new IndexDictValues();
-                    BeanUtil.copyProperties(nv, indexNodeValues);
+                    BeanUtil.copyProperties(dict, indexNodeValues);
                     Node node = new Node();
-                    BeanUtil.copyProperties(nv, node);
+                    BeanUtil.copyProperties(dict, node);
                     indexNodeValues.setNodes(Lists.newArrayList(node));
                     indexDictValuesList.add(indexNodeValues);
                 }
@@ -293,7 +293,10 @@ public class DictWeightProcessing {
         String retry = null;
         while (isf) {
             try {
+                long start = System.currentTimeMillis();
                 result = completionsService.completions(chatCompletionRequest);
+                long end = System.currentTimeMillis();
+                System.out.println("LLM completion time：" + (end - start) + "ms");
                 retry = result.getChoices().get(0).getMessage().getContent();
                 if (retry != null) {
                     isf = false;

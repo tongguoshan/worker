@@ -1,6 +1,7 @@
 package ai.workerDispose.dao;
 
 import ai.database.impl.MysqlAdapter;
+import ai.workerDispose.pojo.DictValue;
 import ai.workerDispose.pojo.NodeValue;
 import ai.workerDispose.pojo.WeightObj;
 
@@ -19,6 +20,15 @@ public class AiZindexUserDao extends MysqlAdapter {
                 " LEFT JOIN ai_unindex_dict aud ON aud.did = azu.did \n" +
                 " LEFT JOIN ai_unindex_node aun ON aun.nid = azu.nid;";
         List<NodeValue> list = select(NodeValue.class, sql,pageNumbers, pageSize);
+        return list.size() > 0 && list != null ? list : new ArrayList<>();
+    }
+
+    public List<DictValue> getDictList(int pageNumber, int pageSize) {
+        int pageNumbers =(pageNumber - 1) * pageSize;
+        String sql = "SELECT azu.did,aud.plain_text AS plainText FROM " +
+                "(SELECT distinct (did) FROM ai_zindex_user ORDER BY did limit ?, ?) azu\n" +
+                " LEFT JOIN ai_unindex_dict aud ON aud.did = azu.did";
+        List<DictValue> list = select(DictValue.class, sql, pageNumbers, pageSize);
         return list.size() > 0 && list != null ? list : new ArrayList<>();
     }
 

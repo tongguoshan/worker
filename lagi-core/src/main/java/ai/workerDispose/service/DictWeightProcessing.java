@@ -41,49 +41,59 @@ public class DictWeightProcessing {
 
     private static final String VECTOR_QUERY_URL = "https://lagi.saasai.top/v1/vector/query";
     private static final String CATEGORY = "dict";
-    private static final double QUERY_SIMILARITY = 0.1;
+    private static final double QUERY_SIMILARITY = 0.2;
 
     public void dictWeightProcess(int startPage, int endPage, int pageSize) {
         for (int i = startPage; i <= endPage; i++) {
             System.out.println("\n\nCurrent page is " + i + ", time is " + simpleDateFormat.format(new Date()));
-            DictWeightProcessing dictionaryProcessing = new DictWeightProcessing();
-            List<DictValue> dictList = aiZindexUserDao.getDictList(i, pageSize);
-            List<IndexDictValues> indexDictValuesList = new ArrayList<>();
-            dictList.forEach(dict -> {
-                IndexDictValues obj = null;
-                for (IndexDictValues indexDictValues : indexDictValuesList) {
-                    if (indexDictValues.getDid().equals(dict.getDid())) {
-                        obj = indexDictValues;
-                        break;
-                    }
-                }
-                if (obj != null) {
-                    Node node = new Node();
-                    BeanUtil.copyProperties(dict, node);
-                    List<Node> nodeList = obj.getNodes();
-                    nodeList.add(node);
-                    obj.setNodes(nodeList);
-                } else {
-                    IndexDictValues indexNodeValues = new IndexDictValues();
-                    BeanUtil.copyProperties(dict, indexNodeValues);
-                    Node node = new Node();
-                    BeanUtil.copyProperties(dict, node);
-                    indexNodeValues.setNodes(Lists.newArrayList(node));
-                    indexDictValuesList.add(indexNodeValues);
-                }
-            });
+            try {
+                dictWeightProcess(pageSize, i);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
 
+    private void dictWeightProcess(int pageSize, int i) {
+        DictWeightProcessing dictionaryProcessing = new DictWeightProcessing();
+        List<DictValue> dictList = aiZindexUserDao.getDictList(i, pageSize);
+        List<IndexDictValues> indexDictValuesList = new ArrayList<>();
+        dictList.forEach(dict -> {
+            IndexDictValues obj = null;
             for (IndexDictValues indexDictValues : indexDictValuesList) {
-                List<IndexRecord> nodeQueryList = dictionaryProcessing.query(indexDictValues);
-                System.out.println("nodeQueryList size is " + nodeQueryList.size());
-                List<Node> nodeList = indexRecordTONode(nodeQueryList, indexDictValues.getDid());
-                if (!nodeList.isEmpty()) {
-                    List<Node> nodes = fieldRating(indexDictValues.getPlainText(), removeDuplicates(nodeList));
-                    nodes = removeDuplicates(nodes);
-                    for (Node node : nodes) {
-                        System.out.println("did=" + indexDictValues.getDid() + " uid=" + node.getNid() + " weight=" + node.getWeight());
-                        updateWeight(node.getNid(), indexDictValues.getDid(), node.getWeight());
-                    }
+                if (indexDictValues.getDid().equals(dict.getDid())) {
+                    obj = indexDictValues;
+                    break;
+                }
+            }
+            if (obj != null) {
+                Node node = new Node();
+                BeanUtil.copyProperties(dict, node);
+                List<Node> nodeList = obj.getNodes();
+                nodeList.add(node);
+                obj.setNodes(nodeList);
+            } else {
+                IndexDictValues indexNodeValues = new IndexDictValues();
+                BeanUtil.copyProperties(dict, indexNodeValues);
+                Node node = new Node();
+                BeanUtil.copyProperties(dict, node);
+                indexNodeValues.setNodes(Lists.newArrayList(node));
+                indexDictValuesList.add(indexNodeValues);
+            }
+        });
+
+        for (IndexDictValues indexDictValues : indexDictValuesList) {
+            long start = System.currentTimeMillis();
+            List<IndexRecord> nodeQueryList = dictionaryProcessing.query(indexDictValues);
+            long end = System.currentTimeMillis();
+            System.out.println("node query size is " + nodeQueryList.size() + ", time is " + (end - start) + "ms");
+            List<Node> nodeList = indexRecordTONode(nodeQueryList, indexDictValues.getDid());
+            if (!nodeList.isEmpty()) {
+                List<Node> nodes = fieldRating(indexDictValues.getPlainText(), removeDuplicates(nodeList));
+                nodes = removeDuplicates(nodes);
+                for (Node node : nodes) {
+                    System.out.println("did=" + indexDictValues.getDid() + " uid=" + node.getNid() + " weight=" + node.getWeight());
+                    updateWeight(node.getNid(), indexDictValues.getDid(), node.getWeight());
                 }
             }
         }
@@ -297,12 +307,13 @@ public class DictWeightProcessing {
                 result = completionsService.completions(chatCompletionRequest);
                 long end = System.currentTimeMillis();
                 System.out.println("LLM completion time：" + (end - start) + "ms");
-                retry = result.getChoices().get(0).getMessage().getContent();
-                if (retry != null) {
-                    isf = false;
+                if (result != null && result.getChoices() != null && result.getChoices().size() > 0) {
+                    retry = result.getChoices().get(0).getMessage().getContent();
+                    if (retry != null) {
+                        isf = false;
+                    }
                 }
             } catch (Exception e) {
-                isf = false;
                 try {
                     Thread.sleep(1000);
                     System.out.println("访问出错了");

@@ -4,6 +4,9 @@ import ai.workerDispose.pojo.WriteCvs;
 
 import java.io.*;
 import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 
 public class WriteIds {
@@ -48,8 +51,64 @@ public class WriteIds {
         }
         return "写入成功！";
     }
+    public static String writerClassifyCsv(String csvFilePath, Map<String, String> idToValueMap){
+        Path path = Paths.get(csvFilePath);
+        List<String> updatedLines = new ArrayList<>();
 
+        try (BufferedReader reader = Files.newBufferedReader(path)) {
+            String line;
+            boolean firstLine = true;
+            while ((line = reader.readLine()) != null) {
+                if (firstLine) {
+                    updatedLines.add(line);
+                    firstLine = false;
+                    continue;
+                }
+                String[] fields = line.split(",",-1);
+                String keyword = fields[0].replaceAll("^\"|\"$", "");
+                // 检查Map中是否有当前行的ID
+                if (idToValueMap.containsKey(keyword)) {
+                    // 确保行中有至少4个字段，如果没有则添加新列
+                    if (fields.length < 4) {
+                        // 扩展数组以添加新列
+                        fields = Arrays.copyOf(fields, 4);
+                        // 填充新列之前的位置（如果需要）
+                        for (int i = fields.length - 1; i >= 4; i--) {
+                            fields[i] = "";
+                        }
+                    }
+                    // 更新第四列
+                    fields[3] = idToValueMap.get(keyword);
+                }
+                // 将更新后的行重新组合并添加到列表中
+                updatedLines.add(String.join(",", fields));
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
+        // 将更新后的内容写回CSV文件
+        try (BufferedWriter writer = Files.newBufferedWriter(path)) {
+            for (String updatedLine : updatedLines) {
+                writer.write(updatedLine);
+                writer.newLine();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return "写入成功！";
+    }
+    private static String[] insertValue(String[] fields, int index, String value) {
+        // 创建一个新的数组，长度为原数组长度加1
+        String[] newFields = new String[fields.length + 1];
+        // 复制原数组内容到新数组，直到插入点
+        System.arraycopy(fields, 0, newFields, 0, index + 1);
+        // 插入新值
+        newFields[index + 1] = value;
+        // 复制剩余的原数组内容到新数组
+        System.arraycopy(fields, index + 1, newFields, index + 2, fields.length - index - 1);
+        return newFields;
+    }
     private static List<WriteCvs> findIdsByKeywords(String keywords, String csvFilePath) throws IOException {
         List<String> ids = new ArrayList<>();
         List<WriteCvs> keywordList = new ArrayList<>();

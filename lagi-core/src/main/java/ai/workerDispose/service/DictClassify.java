@@ -87,11 +87,33 @@ public class DictClassify {
                         idto1 = startId;
                     }
 
-                    String keywords = analyse1(idto1, content,stopId);
-                    Map<String, String> map1 = Workflows(keywords, idAndValueMap);
+                    Map<String, String> map1 = new HashMap<>();
+                    Map<String, String> map2 = new HashMap<>();
+                    boolean flag = true;
+                    while (flag){
+                        try {
+                            String keywords = analyse1(idto, content, stopId);
+                            map1 = Workflows(keywords, idAndValueMap);
+                            if (map1.size()>10){
+                                flag = false;
+                            }
+                        }catch (Exception e){
+                            System.out.println(e);
+                        }
+                    }
 
-                    String keywords1 = analyse(idto, content, stopId);
-                    Map<String, String> map2 = Workflows(keywords1, idAndValueMap);
+                    boolean flag1 = true;
+                    while (flag1){
+                        try {
+                            String keywords1 = analyse(idto, content, stopId);
+                            map2 = Workflows(keywords1, idAndValueMap);
+                            if (map2.size()>10){
+                                flag1 = false;
+                            }
+                        }catch (Exception e){
+                            System.out.println(e);
+                        }
+                    }
 
                     Map<String, String> idToValueMap = ConversionTypeUtils.getIntersection(map1, map2);
                     //该方法适用于方案一
@@ -231,7 +253,6 @@ public class DictClassify {
                 "(2) 如果不属于所列任何一个类别，就将该节点的类别值，type就为“其它”;\n" +
                 "(3) 如果该词不仅不属于任何一个类别，且是错误的词语(生造词)，则将该节点的type就为“生造词”;\n" +
                 "(4) 输出格式为：“{name属于type, name属于type}” 例如：{小鸡属于生物,麻辣香锅属于食物};\n" +
-                "(4) 不要输出json格式的数据\n" +
                 "请给下面的数据进行分类： \033[0;94m \n “"};
         String[] promptTail = {"”\n \033[0m 注意：无需解释，无需其它提示词，只要输出“{name属于type, name属于type}” 的数据即可。"};
 
@@ -249,7 +270,7 @@ public class DictClassify {
 
     public static void main(String[] args) {
         //开385876 停419268
-        demo1("392098" ,"419268");
+        demo1("403032" ,"419268");
     }
 
     public static void demo1(String startId, String stopId){
@@ -261,6 +282,55 @@ public class DictClassify {
 
         }
     }
+
+    @Test
+    public void ttt(){
+        String input = "现有45类：\n" +
+                "“生物,人工制品,名字,行为,形象,种类,言语,参数,事件,程度,状态 \n" +
+                ",关系,版本,医学,商务,介连词,软件,硬件,习俗,物理,味道,网站 \n" +
+                ",企业,气候,团体,规定,院校,地点,娱乐,思想 \n" +
+                ",食物,文艺,历史,宗教,颜色,符号,组织部位,功能 \n" +
+                ",声音语气,时间,建筑,身份,化学,理论技法,自然物”\n" +
+                "要求：\n" +
+                "(1) 依据以上类别，对下面的name进行分类，type的值即为该类型；\n" +
+                "(2) 如果不属于所列任何一个类别，就将该节点的类别值，type就为“其它”;\n" +
+                "(3) 如果该词不仅不属于任何一个类别，且是错误的词语(生造词)，则将该节点的type就为“生造词”;\n" +
+                "(4) 输出格式为：“{name属于type, name属于type}” 例如：{小鸡属于生物,麻辣香锅属于食物};\n" +
+                "请给下面的数据进行分类：  \n" +
+                " “拏风,眔,短绌,四徯,霂雾,八牕,忧愤,髴兮,苛烈,嘈闲,荡飏,穹礴,邹媖,古郯,灿昀,诚惶,屡戒,偓体,视阈,渤澥,檄愈,浪蘂,继晷,婵,瑛,鸿毳,柳瀬,莋脚,隳肝,咯定,握杼,婸姬,梦婕,杷罗,贲临,挨踢,笹原,礑溪,広,濩泽,发愤,漏虀,若辱,枯涸,袒裎,楡,三襕,蒲缥,诩,镒韵,粪甾,献杵,成懴,大睄,祾,堑,锦厪,樯桅,煜,尕,浰,溧,嵋,簠,祯,琊,闺,俟奋,东矣,雩溪,农孵,防蔽,杵状,向阪,益溆,小嶋,铝业,撅坑,撅堑,沢木,黟山,煌熇,晶穂,黥武,含糗,雪浥,阪,雨浥,髌,讪牙,锍潋,埒才,扁鯺,美嵨,绋尘,辋穿,天瞾,吴垭,西赆,泺黄,”\n" +
+                " 注意：完整的给每一个词分类，无需解释，无需其它提示词。";
+        System.out.println(chat3(input));
+    }
+
+
+    public static String chat3(String content) {
+        //mock request
+        ChatCompletionRequest chatCompletionRequest = new ChatCompletionRequest();
+        chatCompletionRequest.setTemperature(0.8);
+        chatCompletionRequest.setMax_tokens(1024);
+        chatCompletionRequest.setCategory("default");
+        ChatMessage message = new ChatMessage();
+        message.setRole("user");
+        message.setContent(content);
+        chatCompletionRequest.setMessages(Lists.newArrayList(message));
+        // Set the stream parameter to false
+        chatCompletionRequest.setStream(false);
+        chatCompletionRequest.setModel("glm-3-turbo");
+        //chatCompletionRequest.setModel("ERNIE-Speed-128K");
+        //chatCompletionRequest.setModel("v3.5");
+
+        CompletionsService completionsService = new CompletionsService();
+        ChatCompletionResult result = null;
+        String retry = null;
+            try {
+                result = completionsService.completions(chatCompletionRequest);
+                retry = result.getChoices().get(0).getMessage().getContent();
+            }catch (Exception e){
+
+        }
+        return retry;
+    }
+
 
 
 
@@ -304,7 +374,7 @@ public class DictClassify {
                 }
                 count = 0;
             }catch (Exception e){
-                chatCompletionRequest.setModel("glm-4");
+                chatCompletionRequest.setModel("moonshot-v1-8k");
                 System.out.println("访问出错了，"+"起："+startId+"停："+stopId);
                 result = completionsService.completions(chatCompletionRequest);
                 retry = result.getChoices().get(0).getMessage().getContent();
@@ -350,7 +420,7 @@ public class DictClassify {
                 }
                 count = 0;
             }catch (Exception e){
-                chatCompletionRequest.setModel("glm-4");
+                chatCompletionRequest.setModel("qwen-plus");
                 System.out.println("访问出错了，"+"起："+startId+"停："+stopId);
                 result = completionsService.completions(chatCompletionRequest);
                 retry = result.getChoices().get(0).getMessage().getContent();

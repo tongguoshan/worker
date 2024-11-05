@@ -29,6 +29,8 @@ public class ConversionTypeUtils {
     }
 
     public static String extractContentWithinBraces(String input) {
+        input = input.replaceAll("\\s", "");
+        input = input.replace("，", ",");
         if (input == null || !input.contains("{") || !input.contains("}")) {
             return null;
         }
@@ -42,7 +44,9 @@ public class ConversionTypeUtils {
         String[] pairs = input.split(",");
         for (String pair : pairs) {
             String[] keyValue = pair.split("属于");
-            map.put(keyValue[0], keyValue[1]);
+            if (keyValue.length > 1){
+                map.put(keyValue[0], keyValue[1]);
+            }
         }
         return map;
     }
@@ -96,6 +100,8 @@ public class ConversionTypeUtils {
         categoryMap.put("化学", "43");
         categoryMap.put("理论技法", "44");
         categoryMap.put("自然物", "45");
+        categoryMap.put("其它", "0");
+        categoryMap.put("生造词", "-2");
         for (String key : map.keySet()) {
             String value = categoryMap.get(map.get(key.trim()));
             String key1 =  idANDValueMap.get(key.trim());
@@ -126,9 +132,8 @@ public class ConversionTypeUtils {
 //        String input = "{2292=3, 2325=3, 2330=6, 2383=5, 2390=11, 2422=5, 2515=5, 2586=4}";
 //        ConversionTypeUtils ctu=new ConversionTypeUtils();
 //        ctu.stringTomap(input);
-        String input = "请帮我写一个java的demo在以下字符串中提取中的内容：\n" +
-                "{东隅属于地点, 抡属于行为, 漱属于行为, 婢属于行为, 姊属于名字, 概属于参数, 兢属于行为, 胗属于组织部位, 臆属于思想} \n" +
-                "请注意，这里的分类基于每个词的最直接含义，有些词可能有多重含义，但这里仅按照最常见的含义进行了分类。此外，对于一些特定领域的术语或较罕见的词汇，如果未在类别中找到对应项，则可能归入了较为接近的类别或标记为0。对于完全不常见的生造词或明显不符合上述任何类别的词，会标记为-1，但在本次列表中并未出现这样的情况。";
+        String input = "{隶属属于关系, 经纪属于商务, 区号属于参数, 区域属于地点, 标准属于规定, 二级属于参数, 售后属于商务, 官方属于身份, 特殊属于参数, 小组属于团体, 体制属于规定, 分支属于关系, 价值属于参数, 专业属于参数, 不良属于状态, 反应属于行为, 高等属于参数, 配套属于参数, 景观属于自然物, 简体属于人工制品, 清晰属于参数, 体系属于规定, 环境属于自然物, 最佳属于参数, 湖泊属于自然物, 无线属于物理, 直属属于关系, 职务属于身份, 少数属于参数, 辖区属于地点, 市场属于商务, 名胜属于地点, 古迹属于历史, 中心属于地点, 天干属于自然物, 高速属于物理, 常用属于参数, 性质属于参数, 现状属于状态, 不锈属于人工制品, 重要属于参数, 残疾属于状态, 限界属于参数, 闽南属于地点, 微量属于参数, 普通属于参数, 住宅属于地点, 智能属于技术, 快捷属于参数, 省级属于规定, 感光属于物理, 风光属于自然物, 部分属于参数, 实用属于参数, 场所属于地点, 高级属于参数, 导电属于物理, 公共属于物理, 社区属于地点, 奇偶属于数学, 相关属于关系, 技能属于行为, 耐热属于物理, 强度属于物理, 导热属于物理, 公益属于行为, 乐属于娱乐, 习惯属于行为, 权威属于行为, 水星属于自然物, 附属属于关系, 医院属于医学, 手动属于行为, 汉化属于人工制品, 异界属于虚构, 大陆属于地点, 虚拟属于人工制品, 官渡属于历史, 神圣属于宗教, 邵阳属于地点, 热血属于行为, 南山属于地点, 外用属于行为, 湖南属于地点, 宝鸡属于地点, 防盗属于物理, 家常属于食物, 赣州属于地点, 南方属于地理, 河县属于地点, 有限属于规定, 街道属于地点, 免费属于参数, 北京属于地点, 威尔士属于地点, 鄂州属于地点, 第八属于参数, 都市属于地点, 苏丹属于地点, 强壮属于状态} \n" +
+                "请注意，\"异界\"被归类为虚构，因为根据提供的类别列表中没有更合适的分类。如果您有其他特定的分类需求，请告知。";
         String content = extractContentWithinBraces(input);
         System.out.println(content);
         Map<String, String> map = convertStringToMap(content);

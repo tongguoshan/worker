@@ -113,11 +113,34 @@ public class DictClassify {
                     idto1 = startId;
                 }
                 System.out.println("处理最后一个批次，此时id为" + idto + "，分析到了第" + wordCount + "个");
-                String keywords = analyse1(idto, content, stopId);
-                Map<String, String> map1 = Workflows(keywords, idAndValueMap);
 
-                String keywords1 = analyse(idto, content, stopId);
-                Map<String, String> map2 = Workflows(keywords1, idAndValueMap);
+                Map<String, String> map1 = new HashMap<>();
+                Map<String, String> map2 = new HashMap<>();
+                boolean flag = true;
+                while (flag){
+                    try {
+                        String keywords = analyse1(idto, content, stopId);
+                        map1 = Workflows(keywords, idAndValueMap);
+                        if (map1.size()>10){
+                            flag = false;
+                        }
+                    }catch (Exception e){
+                        System.out.println(e);
+                    }
+                }
+
+                boolean flag1 = true;
+                while (flag1){
+                    try {
+                        String keywords1 = analyse(idto, content, stopId);
+                        map2 = Workflows(keywords1, idAndValueMap);
+                        if (map2.size()>10){
+                            flag1 = false;
+                        }
+                    }catch (Exception e){
+                        System.out.println(e);
+                    }
+                }
 
                 Map<String, String> idToValueMap = ConversionTypeUtils.getIntersection(map1, map2);
                         //该方法适用于方案一
@@ -138,7 +161,6 @@ public class DictClassify {
         return "任务完成！";
     }
 
-    @NotNull
     private static Map<String, String> Workflows(String keywords, Map<String, String> idAndValueMap) {
         String parse = ConversionTypeUtils.extractContentWithinBraces(keywords);
         if (parse != null && !parse.trim().isEmpty()){
@@ -179,11 +201,11 @@ public class DictClassify {
                 ",声音语气,时间,建筑,身份,化学,理论技法,自然物”\n" +
                 "要求：\n" +
                 "(1) 依据以上类别，对下面的name进行分类，type的值即为该类型；\n" +
-                "(2) 如果不属于所列任何一个类别，就将该节点的类别值，标记为0;\n" +
-                "(3) 如果该词不仅不属于任何一个类别，且是错误的词语(生造词)，则将该节点的类别值，标记为-1;\n" +
-                "(4) 输出格式为：“{[name]属于[type], [name]属于[type]}” 例如：{小鸡属于生物,麻辣香锅属于食物};\n" +
+                "(2) 如果不属于所列任何一个类别，就将该节点的类别值，type就标记为“其它”;\n" +
+                "(3) 如果该词不仅不属于任何一个类别，且是错误的词语(生造词)，则将该节点的type值，标记为“生造词”;\n" +
+                "(4) 输出格式为：“{name属于type, name属于type}” 例如：{小鸡属于生物,麻辣香锅属于食物};\n" +
                 "请给下面的数据进行分类： \033[0;94m \n “"};
-        String[] promptTail = {"”\n \033[0m 注意：无需解释，无需其它提示词，只要输出“{[name]属于[type], [name]属于[type]}” 的数据即可。"};
+        String[] promptTail = {"”\n \033[0m 注意：无需解释，无需其它提示词，只要输出“{name属于type, name属于type}” 的数据即可。"};
 
         String content1 = promptHead[0];
         content1 += content + promptTail[0];
@@ -206,11 +228,12 @@ public class DictClassify {
                 ",声音语气,时间,建筑,身份,化学,理论技法,自然物”\n" +
                 "要求：\n" +
                 "(1) 依据以上类别，对下面的name进行分类，type的值即为该类型；\n" +
-                "(2) 如果不属于所列任何一个类别，就将该节点的类别值，标记为0;\n" +
-                "(3) 如果该词不仅不属于任何一个类别，且是错误的词语(生造词)，则将该节点的类别值，标记为-1;\n" +
-                "(4) 输出格式为：“{[name]属于[type], [name]属于[type]}” 例如：{小鸡属于生物,麻辣香锅属于食物};\n" +
+                "(2) 如果不属于所列任何一个类别，就将该节点的类别值，type就为“其它”;\n" +
+                "(3) 如果该词不仅不属于任何一个类别，且是错误的词语(生造词)，则将该节点的type就为“生造词”;\n" +
+                "(4) 输出格式为：“{name属于type, name属于type}” 例如：{小鸡属于生物,麻辣香锅属于食物};\n" +
+                "(4) 不要输出json格式的数据\n" +
                 "请给下面的数据进行分类： \033[0;94m \n “"};
-        String[] promptTail = {"”\n \033[0m 注意：无需解释，无需其它提示词，只要输出“{[name]属于[type], [name]属于[type]}” 的数据即可。"};
+        String[] promptTail = {"”\n \033[0m 注意：无需解释，无需其它提示词，只要输出“{name属于type, name属于type}” 的数据即可。"};
 
         String content1 = promptHead[0];
         content1 += content + promptTail[0];
@@ -225,8 +248,8 @@ public class DictClassify {
 
 
     public static void main(String[] args) {
-        //开378781 停419268
-        demo1("node_id" ,"419268");
+        //开385876 停419268
+        demo1("392098" ,"419268");
     }
 
     public static void demo1(String startId, String stopId){

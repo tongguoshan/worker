@@ -7,12 +7,11 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Data
-public class WriteClassifyCvs {
+public class ClassifyTxt {
     private Integer nid;
     private Integer node_id;
     private Integer id;
     private String desc;
     private String node_text;
-    private String type;
     private Integer sub_node_table_index;
 }

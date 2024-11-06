@@ -1,12 +1,15 @@
 package ai.workerDispose.dao;
 
 import ai.database.impl.MysqlAdapter;
+import ai.workerDispose.pojo.ClassifyTxt;
 import ai.workerDispose.pojo.DictValue;
 import ai.workerDispose.pojo.NodeValue;
 import ai.workerDispose.pojo.WeightObj;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class AiZindexUserDao extends MysqlAdapter {
     /**
@@ -21,6 +24,50 @@ public class AiZindexUserDao extends MysqlAdapter {
                 " LEFT JOIN ai_unindex_node aun ON aun.nid = azu.nid;";
         List<NodeValue> list = select(NodeValue.class, sql,pageNumbers, pageSize);
         return list.size() > 0 && list != null ? list : new ArrayList<>();
+    }
+
+    /**
+     * 节点分类查询
+     * @return
+     */
+    public List<ClassifyTxt> getClassifyTxt(String nids) {
+        nids = nids.replace('，', ',');
+        nids = nids.replace(" ", "");
+        String[] nidsArray = nids.split(",");
+        String sql = "SELECT nodes.*,anc.name AS node_text,anc.desc,anc.node_id FROM " +
+                "(SELECT aun.nid,aun.sub_id_in_table AS id ,aun.sub_node_table_index FROM " +
+                " ai_unindex_node aun WHERE aun.sub_node_table_index = 74 AND nid IN (" +
+                Arrays.stream(nidsArray)
+                        .map(id -> "'" + id + "'") // 为每个ID添加单引号
+                        .collect(Collectors.joining(",")) + // 使用逗号连接
+                ") ORDER BY aun.nid ) nodes\n" +
+                "LEFT JOIN ai_node_candidate anc ON nodes.id = anc.node_id;";
+        //System.out.println(sql);
+        List<ClassifyTxt> list = select(ClassifyTxt.class, sql);
+        return list.size() > 0 && list != null ? list : new ArrayList<>();
+    }
+
+    /**
+     * 节点分类查询(分页版)
+     * @param batchLimit
+     * @param snti sub_node_table_index
+     * @param minNid
+     * @param maxNid
+     * @return
+     */
+    public List<ClassifyTxt> getClassifyTxt(int batchLimit,int snti,Integer minNid,Integer maxNid) {
+        String sql = "SELECT nodes.*,anc.name AS node_text,anc.desc,anc.node_id FROM " +
+                "(SELECT aun.nid,aun.sub_id_in_table AS id ,aun.sub_node_table_index FROM " +
+                " ai_unindex_node aun WHERE aun.sub_node_table_index = ? AND aun.nid BETWEEN ? AND ? ORDER BY aun.nid ) nodes\n" +
+                "LEFT JOIN ai_node_candidate anc ON nodes.id = anc.node_id LIMIT ?;";
+        List<ClassifyTxt> list = select(ClassifyTxt.class, sql,snti,minNid,maxNid, batchLimit);
+        return list.size() > 0 && list != null ? list : new ArrayList<>();
+    }
+
+    public boolean getClassifyTxtCount(int snti,Integer minNid,Integer maxNid) {
+        String sql = "SELECT count(*) FROM ai_unindex_node aun WHERE aun.sub_node_table_index = ? AND aun.nid BETWEEN ? AND ? ORDER BY aun.nid;";
+        Integer msg = selectCount(sql,snti,minNid,maxNid);
+        return msg > 0;
     }
 
     public List<DictValue> getDictList(int pageNumber, int pageSize) {

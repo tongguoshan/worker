@@ -1,5 +1,6 @@
 package ai.workerDispose.utils;
 
+import ai.workerDispose.pojo.WriteClassifyCvs;
 import ai.workerDispose.pojo.WriteCvs;
 
 import java.io.*;
@@ -201,6 +202,27 @@ public class WriteIds {
         return fileContentBuilder.toString();
     }
 
+    public static void writeObjectsToCsv(List<WriteClassifyCvs> objects, String filePath) {
+        boolean hasHeader = Files.exists(Paths.get(filePath));
+        try (BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(filePath, true))) {
+            if (!hasHeader) {
+                bufferedWriter.write("nid,nodeid,id,nodetext,desc,type,sub_node_table_index\n");
+            }
+            for (WriteClassifyCvs obj : objects) {
+                String line = String.format("%d,%d,%d,%s,%s,%s,%d\n",
+                        obj.getNid(),
+                        obj.getNode_id(),
+                        obj.getId(),
+                        obj.getNode_text(),
+                        obj.getDesc(),
+                        obj.getType(),
+                        obj.getSub_node_table_index());
+                bufferedWriter.write(line);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
     public static void main(String[] args) {
         System.out.println("Hello world!");
     }

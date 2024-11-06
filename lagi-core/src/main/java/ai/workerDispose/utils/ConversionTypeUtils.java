@@ -1,10 +1,16 @@
 package ai.workerDispose.utils;
 
+import ai.workerDispose.pojo.ClassifyTxt;
+import ai.workerDispose.pojo.WriteClassifyCvs;
 import org.junit.Test;
+
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public class ConversionTypeUtils {
 
@@ -108,6 +114,141 @@ public class ConversionTypeUtils {
             if (value != null && !value.trim().isEmpty()
                && key1 != null&& !key1.trim().isEmpty()){
                 result.put(key1,value);
+            }
+        }
+        System.out.println("转换后的结果："+result);
+        return result;
+    }
+
+    public static Map<String, String> getKeyByClassIdHybrid(Map<String, String> map,Map<String, String> idANDValueMap) {
+
+        Map<String,String> result = new HashMap<>();
+        Map<String, String> categoryMap = new HashMap<>();
+        categoryMap.put("生物", "1");
+        categoryMap.put("人工制品", "2");
+        categoryMap.put("名字", "3");
+        categoryMap.put("行为", "4");
+        categoryMap.put("形象", "5");
+        categoryMap.put("种类", "6");
+        categoryMap.put("言语", "7");
+        categoryMap.put("参数", "8");
+        categoryMap.put("事件", "9");
+        categoryMap.put("程度", "10");
+        categoryMap.put("状态", "11");
+        categoryMap.put("关系", "12");
+        categoryMap.put("版本", "13");
+        categoryMap.put("医学", "14");
+        categoryMap.put("商务", "15");
+        categoryMap.put("介连词", "16");
+        categoryMap.put("软件", "17");
+        categoryMap.put("硬件", "18");
+        categoryMap.put("习俗", "19");
+        categoryMap.put("物理", "20");
+        categoryMap.put("味道", "21");
+        categoryMap.put("网站", "22");
+        categoryMap.put("企业", "23");
+        categoryMap.put("气候", "24");
+        categoryMap.put("团体", "25");
+        categoryMap.put("规定", "26");
+        categoryMap.put("院校", "27");
+        categoryMap.put("地点", "28");
+        categoryMap.put("娱乐", "29");
+        categoryMap.put("思想", "30");
+        categoryMap.put("食物", "31");
+        categoryMap.put("文艺", "32");
+        categoryMap.put("历史", "33");
+        categoryMap.put("宗教", "34");
+        categoryMap.put("颜色", "35");
+        categoryMap.put("符号", "36");
+        categoryMap.put("组织部位", "37");
+        categoryMap.put("功能", "38");
+        categoryMap.put("声音语气", "39");
+        categoryMap.put("时间", "40");
+        categoryMap.put("建筑", "41");
+        categoryMap.put("身份", "42");
+        categoryMap.put("化学", "43");
+        categoryMap.put("理论技法", "44");
+        categoryMap.put("自然物", "45");
+        categoryMap.put("法律", "46");
+        categoryMap.put("数学", "47");
+        categoryMap.put("运动", "48");
+        categoryMap.put("地质", "49");
+        categoryMap.put("特征", "50");
+        categoryMap.put("其它", "0");
+        categoryMap.put("生造词", "-2");
+        for (String key : map.keySet()) {
+            String value = categoryMap.get(map.get(key.trim()));
+            String key1 =  idANDValueMap.get(key.trim());
+            if (value != null && !value.trim().isEmpty()
+                    && key1 != null&& !key1.trim().isEmpty()){
+                result.put(key1,value);
+            }
+        }
+        System.out.println("转换后的结果："+result);
+        return result;
+    }
+
+    public static List<WriteClassifyCvs> getKeyByClassId(Map<String, String> map, List<ClassifyTxt> classifyTxtsList) {
+
+        List<WriteClassifyCvs> result = new ArrayList<>();
+        Map<String, String> categoryMap = new HashMap<>();
+        categoryMap.put("生物", "1");
+        categoryMap.put("人工制品","2");
+        categoryMap.put("名字", "3");
+        categoryMap.put("行为", "4");
+        categoryMap.put("形象", "5");
+        categoryMap.put("种类", "6");
+        categoryMap.put("言语", "7");
+        categoryMap.put("参数", "8");
+        categoryMap.put("事件", "9");
+        categoryMap.put("程度", "10");
+        categoryMap.put("状态", "11");
+        categoryMap.put("关系", "12");
+        categoryMap.put("版本", "13");
+        categoryMap.put("医学", "14");
+        categoryMap.put("商务", "15");
+        categoryMap.put("介连词", "16");
+        categoryMap.put("软件", "17");
+        categoryMap.put("硬件", "18");
+        categoryMap.put("习俗", "19");
+        categoryMap.put("物理", "20");
+        categoryMap.put("味道", "21");
+        categoryMap.put("网站", "22");
+        categoryMap.put("企业", "23");
+        categoryMap.put("气候", "24");
+        categoryMap.put("团体", "25");
+        categoryMap.put("规定", "26");
+        categoryMap.put("院校", "27");
+        categoryMap.put("地点", "28");
+        categoryMap.put("娱乐", "29");
+        categoryMap.put("思想", "30");
+        categoryMap.put("食物", "31");
+        categoryMap.put("文艺", "32");
+        categoryMap.put("历史", "33");
+        categoryMap.put("宗教", "34");
+        categoryMap.put("颜色", "35");
+        categoryMap.put("符号", "36");
+        categoryMap.put("组织部位", "37");
+        categoryMap.put("功能", "38");
+        categoryMap.put("声音语气", "39");
+        categoryMap.put("时间", "40");
+        categoryMap.put("建筑", "41");
+        categoryMap.put("身份", "42");
+        categoryMap.put("化学", "43");
+        categoryMap.put("理论技法", "44");
+        categoryMap.put("自然物", "45");
+        categoryMap.put("其它", "0");
+        categoryMap.put("生造词", "-2");
+        for (String key : map.keySet()) {
+            String type = categoryMap.get(map.get(key.trim()));
+            List<ClassifyTxt> filteredList = classifyTxtsList.stream()
+                    .filter(node -> key.equals(node.getNode_text()))
+                    .collect(Collectors.toList());
+            if (filteredList!=null &&filteredList.size()>0){
+                for (ClassifyTxt node : filteredList){
+                    //new WriteClassifyCvs(null,null,null,null,null,null,null);
+                    result.add(new WriteClassifyCvs(node.getNid(),node.getNode_id(),node.getId(),node.getDesc(),node.getNode_text(),type,node.getSub_node_table_index()));
+                }
             }
         }
         System.out.println("转换后的结果："+result);

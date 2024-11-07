@@ -17,6 +17,8 @@ import cn.hutool.core.bean.BeanUtil;
 import com.google.common.collect.Lists;
 import com.google.gson.Gson;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -41,7 +43,7 @@ public class DictWeightProcessing {
 
     private static final String VECTOR_QUERY_URL = "https://lagi.saasai.top/v1/vector/query";
     private static final String CATEGORY = "dict";
-    private static final double QUERY_SIMILARITY = 0.2;
+    private static final double QUERY_SIMILARITY = 0.15;
 
     public void dictWeightProcess(int startPage, int endPage, int pageSize) {
         for (int i = startPage; i <= endPage; i++) {
@@ -55,8 +57,39 @@ public class DictWeightProcessing {
     }
 
     private void dictWeightProcess(int pageSize, int i) {
-        DictWeightProcessing dictionaryProcessing = new DictWeightProcessing();
         List<DictValue> dictList = aiZindexUserDao.getDictList(i, pageSize);
+        dictWeightProcess(dictList);
+    }
+
+    public void dictWeightProcess(String filepath) {
+        List<DictValue> dictValueList = getDictValueFromFilePath(filepath);
+        for (int i = 0; i <= dictValueList.size(); i++) {
+            System.out.println("\n\nCurrent index is " + i + ", time is " + simpleDateFormat.format(new Date()));
+            try {
+                dictWeightProcess(Collections.singletonList(dictValueList.get(i)));
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private List<DictValue> getDictValueFromFilePath(String filepath) {
+        List<DictValue> dictValueList = new ArrayList<>();
+        try {
+            BufferedReader br = new BufferedReader(new FileReader(filepath));
+            String line;
+            while ((line = br.readLine()) != null) {
+                String[] values = line.split(",");
+                dictValueList.add(new DictValue(Integer.parseInt(values[0]), values[1]));
+            }
+            br.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return dictValueList;
+    }
+
+    public void dictWeightProcess(List<DictValue> dictList) {
         List<IndexDictValues> indexDictValuesList = new ArrayList<>();
         dictList.forEach(dict -> {
             IndexDictValues obj = null;
@@ -84,7 +117,7 @@ public class DictWeightProcessing {
 
         for (IndexDictValues indexDictValues : indexDictValuesList) {
             long start = System.currentTimeMillis();
-            List<IndexRecord> nodeQueryList = dictionaryProcessing.query(indexDictValues);
+            List<IndexRecord> nodeQueryList = query(indexDictValues);
             long end = System.currentTimeMillis();
             System.out.println("node query size is " + nodeQueryList.size() + ", time is " + (end - start) + "ms");
             List<Node> nodeList = indexRecordTONode(nodeQueryList, indexDictValues.getDid());

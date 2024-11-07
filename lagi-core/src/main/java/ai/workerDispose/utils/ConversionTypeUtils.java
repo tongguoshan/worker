@@ -237,8 +237,13 @@ public class ConversionTypeUtils {
         categoryMap.put("化学", "43");
         categoryMap.put("理论技法", "44");
         categoryMap.put("自然物", "45");
+        categoryMap.put("法律", "46");
+        categoryMap.put("数学", "47");
+        categoryMap.put("运动", "48");
+        categoryMap.put("地质", "49");
+        categoryMap.put("特征", "50");
         categoryMap.put("其它", "0");
-        categoryMap.put("生造词", "-2");
+        categoryMap.put("生造词", "-1");
         for (String key : map.keySet()) {
             String type = categoryMap.get(map.get(key.trim()));
             List<ClassifyTxt> filteredList = classifyTxtsList.stream()

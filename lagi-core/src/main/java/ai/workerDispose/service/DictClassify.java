@@ -32,7 +32,7 @@ public class DictClassify {
 
     private static WriteIds writeIds = new WriteIds();
 
-    private  AiZindexUserDao aiZindexUserDao = new AiZindexUserDao();
+    private static AiZindexUserDao aiZindexUserDao = new AiZindexUserDao();
 
     /**
      * 关键词分类
@@ -292,12 +292,13 @@ public class DictClassify {
     }
 
     private static String analysePro(String content) {
-        String[] promptHead = {"现有45类：\n" +
+        String[] promptHead = {"现有以下类型：\n" +
                 "“生物,人工制品,名字,行为,形象,种类,言语,参数,事件,程度,状态 \n" +
                 ",关系,版本,医学,商务,介连词,软件,硬件,习俗,物理,味道,网站 \n" +
                 ",企业,气候,团体,规定,院校,地点,娱乐,思想 \n" +
                 ",食物,文艺,历史,宗教,颜色,符号,组织部位,功能 \n" +
-                ",声音语气,时间,建筑,身份,化学,理论技法,自然物”\n" +
+                ",声音语气,时间,建筑,身份,化学,理论技法,自然物," +
+                "法律,数学,运动,地质,特征,其它,生造词\n”\n" +
                 "要求：\n" +
                 "(1) 依据以上类别，对下面的name进行分类，type的值即为该类型；\n" +
                 "(2) 如果不属于所列任何一个类别，就将该节点的类别值，type就为“其它”;\n" +
@@ -318,12 +319,13 @@ public class DictClassify {
     }
 
     private static String analysePro1(String content) {
-        String[] promptHead = {"现有45类：\n" +
+        String[] promptHead = {"现有以下类型：\n" +
                 "“生物,人工制品,名字,行为,形象,种类,言语,参数,事件,程度,状态 \n" +
                 ",关系,版本,医学,商务,介连词,软件,硬件,习俗,物理,味道,网站 \n" +
                 ",企业,气候,团体,规定,院校,地点,娱乐,思想 \n" +
                 ",食物,文艺,历史,宗教,颜色,符号,组织部位,功能 \n" +
-                ",声音语气,时间,建筑,身份,化学,理论技法,自然物”\n" +
+                ",声音语气,时间,建筑,身份,化学,理论技法,自然物," +
+                "法律,数学,运动,地质,特征,其它,生造词\n”\n" +
                 "要求：\n" +
                 "(1) 依据以上类别，对下面的name进行分类，type的值即为该类型；\n" +
                 "(2) 如果不属于所列任何一个类别，就将该节点的类别值，type就为“其它”;\n" +
@@ -343,13 +345,67 @@ public class DictClassify {
         return result;
     }
 
+    public static  void categorizationOperations(String nids,String filePath){
+        //String filePath = "D:\\OfFile\\test11111.csv";
+        //String nids = "15674579,15674609,15674669,15674785,15674795,15674821,15674853,15675051,15675083,15675107,15675183,15675239,15675283";
+        List<ClassifyTxt> nodeTxtList = aiZindexUserDao.getClassifyTxt(nids);
+        String result = nodeTxtList.stream()
+                .map(ClassifyTxt::getNode_text)
+                .collect(Collectors.joining(","));
+        System.out.println(result);
+
+        List<WriteClassifyCvs> map1 = new ArrayList<>();
+        List<WriteClassifyCvs> map2 = new ArrayList<>();
+        boolean flag = true;
+        while (flag){
+            try {
+                String keywords = analysePro(result);
+                map1 = WorkflowsPro(keywords, nodeTxtList);
+                if (map1.size()>=1){
+                    flag = false;
+                }
+            }catch (Exception e){
+                System.out.println(e);
+            }
+        }
+
+        boolean flag1 = true;
+        while (flag1){
+            try {
+                String keywords1 = analysePro1(result);
+                map2 = WorkflowsPro(keywords1, nodeTxtList);
+                if (map2.size()>=1){
+                    flag1 = false;
+                }
+            }catch (Exception e){
+                System.out.println(e);
+            }
+        }
+
+        List<WriteClassifyCvs> finalMap = map2;
+        List<WriteClassifyCvs> intersection = map1.stream()
+                .filter(obj1 -> obj1.getId() != null &&
+                        obj1.getType() != null)
+                .filter(obj1 -> finalMap.stream()
+                        .anyMatch(obj2 ->
+                                obj2.getId() != null &&
+                                        obj2.getType() != null &&
+                                        obj1.getId().equals(obj2.getId()) &&
+                                        obj1.getType().equals(obj2.getType())))
+                .collect(Collectors.toList());
+
+        writeIds.writeObjectsToCsv(intersection, filePath);
+
+    }
+
+
     /**
      * 程序运行入口
      * @param args
      */
     public static void main(String[] args) {
         //开385876 停419268
-        demo1("403032" ,"419268");
+        //demo1("403032" ,"419268");
     }
 
     /**
@@ -421,60 +477,88 @@ public class DictClassify {
 
     }
 
-    /**
-     * 根据传参nid来分类
-     */
     @Test
-    public  void demo2(){
-        String nids = "15674579,15674609,15674669,15674785,15674795,15674821,15674853,15675051,15675083,15675107,15675183,15675239,15675283";
-        List<ClassifyTxt> nodeTxtList = aiZindexUserDao.getClassifyTxt(nids);
-        String result = nodeTxtList.stream()
-                .map(ClassifyTxt::getNode_text)
-                .collect(Collectors.joining(","));
-        System.out.println(result);
+    public  void demo2Start(){
+        demo2("D:\\OfFile\\nid数据\\nid数据\\FAQ挖掘.csv", "41865854", 20, "31823386","D:\\OfFile\\分类后的数据(FAQ挖掘).csv");
+    }
 
-        List<WriteClassifyCvs> map1 = new ArrayList<>();
-        List<WriteClassifyCvs> map2 = new ArrayList<>();
-        boolean flag = true;
-        while (flag){
-            try {
-                String keywords = analysePro(result);
-                map1 = WorkflowsPro(keywords, nodeTxtList);
-                if (map1.size()>10){
-                    flag = false;
+    private static String demo2(String csvFilePath, String startId, int batchLimit, String stopId,String filePath){
+        String idto = "";//正在处理的id
+        String content = "";
+        int wordCount = 0; // 初始化词计数器
+        String idto1 = "";//上一次处理的id
+
+
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(csvFilePath), StandardCharsets.UTF_8))) {
+            String line;
+            boolean found = true;
+            StringBuilder batchContent = new StringBuilder();
+
+            while ((line = br.readLine()) != null && found) {
+                String[] values = line.split(",");
+                if (values.length > 0) {
+                    wordCount++;
+                    String id = values[0].trim().replaceAll("^\"|\"$", "");
+                    if (stopId.equals(id)) {
+                        break;
+                    }
+                    if (id.equals(startId.trim())) {
+                        found = false;
+                    }
                 }
-            }catch (Exception e){
-                System.out.println(e);
             }
+            System.out.println("从id为" + startId + "，第" + wordCount + "个开始分析");
+            wordCount = 0;
+
+            while ((line = br.readLine()) != null && wordCount < batchLimit) {
+
+                String[] values = line.split(",");
+                if (values.length >= 2) {
+                    String id = values[0].trim().replaceAll("^\"|\"$", "");
+                    if (!stopId.equals(id)) {
+                        //content += id+"."+keyword + ",";
+                        //content += keyword + ",";
+                        content += id+",";
+                    } else {
+                        break;
+                    }
+                    idto = id;
+                }
+                wordCount++;
+
+                if (wordCount % batchLimit == 0) {
+                    System.out.println("此时id为" + idto + "，分析到了第" + wordCount + "个");
+                    if (idto1==null||idto1.equals("")){
+                        idto1 = startId;
+                    }
+                    System.out.println("这里读到的是"+content);
+                    categorizationOperations(content,filePath);
+                    batchContent.setLength(0);
+                    content = "";
+                    wordCount = 0;
+                    idto1 = idto;
+                }
+
+            }
+            // 处理最后一个批次（如果有剩余的词）
+            if (!content.isEmpty()) {
+                if (idto1==null||idto1.equals("")){
+                    idto1 = startId;
+                }
+                System.out.println("这里读到的是"+content);
+                categorizationOperations(content,filePath);
+
+                batchContent.setLength(0);
+                content = "";
+                wordCount = 0;
+                idto1 = idto;
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
         }
 
-        boolean flag1 = true;
-        while (flag1){
-            try {
-                String keywords1 = analysePro1(result);
-                map2 = WorkflowsPro(keywords1, nodeTxtList);
-                if (map2.size()>10){
-                    flag1 = false;
-                }
-            }catch (Exception e){
-                System.out.println(e);
-            }
-        }
-
-        List<WriteClassifyCvs> finalMap = map2;
-        List<WriteClassifyCvs> intersection = map1.stream()
-                .filter(obj1 -> obj1.getId() != null &&
-                        obj1.getType() != null)
-                .filter(obj1 -> finalMap.stream()
-                        .anyMatch(obj2 ->
-                                obj2.getId() != null &&
-                                obj2.getType() != null &&
-                                obj1.getId().equals(obj2.getId()) &&
-                                obj1.getType().equals(obj2.getType())))
-                .collect(Collectors.toList());
-
-        writeIds.writeObjectsToCsv(intersection, "D:\\OfFile\\test11111.csv");
-
+        return "任务完成！";
     }
 
 
@@ -579,7 +663,7 @@ public class DictClassify {
                 }
                 count = 0;
             }catch (Exception e){
-                chatCompletionRequest.setModel("moonshot-v1-8k");
+                chatCompletionRequest.setModel("moonshot-v1-128k");
                 System.out.println("访问出错了，"+"起："+startId+"停："+stopId);
                 result = completionsService.completions(chatCompletionRequest);
                 retry = result.getChoices().get(0).getMessage().getContent();
@@ -609,7 +693,7 @@ public class DictClassify {
         chatCompletionRequest.setMessages(Lists.newArrayList(message));
         // Set the stream parameter to false
         chatCompletionRequest.setStream(false);
-        chatCompletionRequest.setModel("moonshot-v1-8k");
+        chatCompletionRequest.setModel("moonshot-v1-128k");
 
         CompletionsService completionsService = new CompletionsService();
         ChatCompletionResult result = null;

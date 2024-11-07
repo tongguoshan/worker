@@ -1,10 +1,7 @@
 package ai.workerDispose.dao;
 
 import ai.database.impl.MysqlAdapter;
-import ai.workerDispose.pojo.ClassifyTxt;
-import ai.workerDispose.pojo.DictValue;
-import ai.workerDispose.pojo.NodeValue;
-import ai.workerDispose.pojo.WeightObj;
+import ai.workerDispose.pojo.*;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -34,16 +31,40 @@ public class AiZindexUserDao extends MysqlAdapter {
         nids = nids.replace('，', ',');
         nids = nids.replace(" ", "");
         String[] nidsArray = nids.split(",");
-        String sql = "SELECT nodes.*,anc.name AS node_text,anc.desc,anc.node_id FROM " +
-                "(SELECT aun.nid,aun.sub_id_in_table AS id ,aun.sub_node_table_index FROM " +
-                " ai_unindex_node aun WHERE aun.sub_node_table_index = 74 AND nid IN (" +
+
+        String qut = "SELECT " +
+                "    u.sub_node_table_index," +
+                "    s.sub_table_name AS name," +
+                "    GROUP_CONCAT(u.nid ORDER BY u.nid) AS value" +
+                " FROM ai_unindex_node u " +
+                " LEFT JOIN ai_subindex_node s  ON u.sub_node_table_index = s.sub_id  " +
+                " WHERE u.nid IN (" +
                 Arrays.stream(nidsArray)
                         .map(id -> "'" + id + "'") // 为每个ID添加单引号
                         .collect(Collectors.joining(",")) + // 使用逗号连接
-                ") ORDER BY aun.nid ) nodes\n" +
-                "LEFT JOIN ai_node_candidate anc ON nodes.id = anc.node_id;";
-        //System.out.println(sql);
-        List<ClassifyTxt> list = select(ClassifyTxt.class, sql);
+                ")" +
+                "GROUP BY " +
+                "    u.sub_node_table_index, s.sub_table_name;";
+        List<General> generalList = select(General.class, qut);
+        List<ClassifyTxt> list = new ArrayList<>();
+        for (General general : generalList) {
+            String value = general.getValue();
+            String name = general.getName();
+            value = value.replace('，', ',');
+            value = value.replace(" ", "");
+            String[] nidsArrayPlase = value.split(",");
+            String sql = "SELECT nodes.*,anc.name AS node_text,anc.desc,anc.node_id FROM " +
+                    " (SELECT aun.nid,aun.sub_id_in_table AS id ,aun.sub_node_table_index FROM " +
+                    " ai_unindex_node aun WHERE nid IN (" +
+                    Arrays.stream(nidsArrayPlase)
+                            .map(id -> "'" + id + "'") // 为每个ID添加单引号
+                            .collect(Collectors.joining(",")) + // 使用逗号连接
+                    " ) ORDER BY aun.nid ) nodes " +
+                    " LEFT JOIN "+name+" anc ON nodes.id = anc.node_id;";
+            List<ClassifyTxt> list1 = select(ClassifyTxt.class, sql);
+            list.addAll(list1);
+        }
+
         return list.size() > 0 && list != null ? list : new ArrayList<>();
     }
 

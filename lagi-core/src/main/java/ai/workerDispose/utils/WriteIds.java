@@ -206,13 +206,12 @@ public class WriteIds {
         boolean hasHeader = Files.exists(Paths.get(filePath));
         try (BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(filePath, true))) {
             if (!hasHeader) {
-                bufferedWriter.write("nid,nodeid,id,nodetext,desc,type,sub_node_table_index\n");
+                bufferedWriter.write("nid,node_id,node_text,desc,type,sub_node_table_index\n");
             }
             for (WriteClassifyCvs obj : objects) {
-                String line = String.format("%d,%d,%d,%s,%s,%s,%d\n",
+                String line = String.format("%d,%d,%s,%s,%s,%d\n",
                         obj.getNid(),
                         obj.getNode_id(),
-                        obj.getId(),
                         obj.getNode_text(),
                         obj.getDesc(),
                         obj.getType(),

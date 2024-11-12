@@ -79,15 +79,17 @@ public class CsvGenerator {
                             String[] pairs = new String[0];
                             if (reuslt!=null&&reuslt.contains(",")){
                                 pairs = reuslt.split(",");
-                            }
-                            for (String pair : pairs) {
-                                if (pair!=null && !pair.equals("")){
-                                    responseList.add(new General(entries.get(i)[1],pair));
+                                for (String pair : pairs) {
+                                    if (pair!=null && !pair.equals("")){
+                                        responseList.add(new General(entries.get(i)[1],pair));
+                                    }
                                 }
                             }
                             List<Generator> generatorList = new ArrayList<>();
                             for (General general : responseList) {
-                                generatorList.add(new Generator(nidMap.get(general.getName()),nidMap.get(general.getValue()),general.getName(),general.getValue()));
+                                if (nidMap.get(general.getName())!=null&& nidMap.get(general.getValue())!=null){
+                                    generatorList.add(new Generator(nidMap.get(general.getName()),nidMap.get(general.getValue()),general.getName(),general.getValue()));
+                                }
                             }
                             responseList.clear();
                             writeCvs(outputFilePath, generatorList);
@@ -112,15 +114,17 @@ public class CsvGenerator {
                 String[] pairs = new String[0];
                 if (reuslt!=null&&reuslt.contains(",")){
                     pairs = reuslt.split(",");
-                }
-                for (String pair : pairs) {
-                    if (pair!=null && !pair.equals("")){
-                        responseList.add(new General(entries.get(i)[1],pair));
+                    for (String pair : pairs) {
+                        if (pair!=null && !pair.equals("")){
+                            responseList.add(new General(entries.get(i)[1],pair));
+                        }
                     }
                 }
                 List<Generator> generatorList = new ArrayList<>();
                 for (General general : responseList) {
-                    generatorList.add(new Generator(nidMap.get(general.getName()),nidMap.get(general.getValue()),general.getName(),general.getValue()));
+                    if (nidMap.get(general.getName())!=null&& nidMap.get(general.getValue())!=null){
+                        generatorList.add(new Generator(nidMap.get(general.getName()),nidMap.get(general.getValue()),general.getName(),general.getValue()));
+                    }
                 }
                 responseList.clear();
                 writeCvs(outputFilePath, generatorList);
@@ -132,12 +136,12 @@ public class CsvGenerator {
     }
 
     private static void writeCvs(String outputFilePath, List<Generator> generatorList) {
-        boolean hasHeader = Files.exists(Paths.get(outputFilePath));
+ //       boolean hasHeader = Files.exists(Paths.get(outputFilePath));
         try (BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outputFilePath,true), StandardCharsets.UTF_8))) {
             int edgeId = 1;
-            if (hasHeader){
-                bw.write("edge_id,Parent,Child,Parent_id,Child_id\n");  // 写入表头
-            }
+//            if (hasHeader){
+//                bw.write("edge_id,Parent,Child,Parent_id,Child_id\n");  // 写入表头
+//            }
 
             for (Generator generator : generatorList){
                 bw.write(edgeId + "," + generator.getParent() + "," + generator.getChild() + "," + generator.getParentId() + "," + generator.getChildId() + "\n");
@@ -180,8 +184,8 @@ public class CsvGenerator {
                     isf = false;
                 }
             }catch (Exception e){
+                //chatCompletionRequest.setModel("qwen-plus");
                 chatCompletionRequest.setModel("qwen-plus");
-               //chatCompletionRequest.setModel("glm-3-turbo");
                 result = completionsService.completions(chatCompletionRequest);
                 retry = result.getChoices().get(0).getMessage().getContent();
                 if (retry!=null){

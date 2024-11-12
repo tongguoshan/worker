@@ -45,7 +45,7 @@ public class CsvGenerator {
             String line;
             while ((line = br.readLine()) != null) {
                 String[] parts = line.split(",");  // 使用逗号分隔
-                if (parts.length == 2) {
+                if (parts.length >= 2) {
                     entries.add(new String[]{parts[0].trim(), parts[1].trim()});  // 存储 nid 和 Parent
                     nidMap.put(parts[1].trim(), parts[0].trim());
                 }
@@ -76,9 +76,14 @@ public class CsvGenerator {
                             String reuslt = chat1(response);
                             System.out.println("处理前："+reuslt);
                             reuslt = conversionTypeUtils.extractContentWithinBraces(reuslt);
-                            String[] pairs = reuslt.split(",");
+                            String[] pairs = new String[0];
+                            if (reuslt!=null&&reuslt.contains(",")){
+                                pairs = reuslt.split(",");
+                            }
                             for (String pair : pairs) {
-                                responseList.add(new General(entries.get(i)[1],pair));
+                                if (pair!=null && !pair.equals("")){
+                                    responseList.add(new General(entries.get(i)[1],pair));
+                                }
                             }
                             List<Generator> generatorList = new ArrayList<>();
                             for (General general : responseList) {
@@ -104,9 +109,14 @@ public class CsvGenerator {
             if (num>=0){
                     System.out.println("最后一个提问："+response);
                 String reuslt = chat1(response);
-                String[] pairs = reuslt.split(",");
+                String[] pairs = new String[0];
+                if (reuslt!=null&&reuslt.contains(",")){
+                    pairs = reuslt.split(",");
+                }
                 for (String pair : pairs) {
-                    responseList.add(new General(entries.get(i)[1],pair));
+                    if (pair!=null && !pair.equals("")){
+                        responseList.add(new General(entries.get(i)[1],pair));
+                    }
                 }
                 List<Generator> generatorList = new ArrayList<>();
                 for (General general : responseList) {
@@ -123,7 +133,7 @@ public class CsvGenerator {
 
     private static void writeCvs(String outputFilePath, List<Generator> generatorList) {
         boolean hasHeader = Files.exists(Paths.get(outputFilePath));
-        try (BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outputFilePath), StandardCharsets.UTF_8))) {
+        try (BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outputFilePath,true), StandardCharsets.UTF_8))) {
             int edgeId = 1;
             if (hasHeader){
                 bw.write("edge_id,Parent,Child,Parent_id,Child_id\n");  // 写入表头

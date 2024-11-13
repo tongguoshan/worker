@@ -1,4 +1,4 @@
-package ai.workerDispose.service;
+package ai.example;
 
 import ai.config.ContextLoader;
 import ai.llm.service.CompletionsService;
@@ -23,8 +23,10 @@ public class CsvExpandForOneChat {
     }
 
     // 配置参数
-    private static int batchSize = 100;  // 每批次处理的记录数量
-    private static String inputCsvPath = "E:\\file\\TempFiles\\test.csv";  // 输入CSV路径
+    private static int batchSize = 300;  // 每批次处理的记录数量
+    //    private static String inputCsvPath = "E:\\file\\TempFiles\\test.csv";  // 输入CSV路径
+//    private static String inputCsvPath = "E:\\file\\TempFiles\\output_小信智能体测试.csv";  // 输入CSV路径
+    private static String inputCsvPath = "E:\\file\\TempFiles\\nid数据\\output_小信智能体.csv";  // 输入CSV路径
 
     // 关系对应ID的映射
     private static final Map<String, Integer> relationMap = new HashMap<>();
@@ -115,17 +117,18 @@ public class CsvExpandForOneChat {
     public static String generateRelationDesc(String parent, String child, String relation) {
         // 检查特殊的虚语关系
         if ("虚语关系".equals(relation)) {
-            return parent + "--" + child;  // 将虚语关系格式化为"新银--或其"这种格式
+            return "-";  // 将虚语关系格式化为"新银--或其"这种格式
         }
 
-        String format = relationFormatMap.getOrDefault(relation, "Other");
+        String format = relationFormatMap.getOrDefault(relation, "->");
         if (format.contains("<--") && format.contains("-->")) {
-            return parent + "<--" + child + "-->" + parent;
+            return "<-->";
         } else if (format.contains("-->")) {
-            return parent + "-->" + child;
+            return "->";
         }
         return format;
     }
+
 
     // 调用大模型API
     public static String chatFor910B(String content) {
@@ -138,6 +141,7 @@ public class CsvExpandForOneChat {
         message.setContent(content);
         chatCompletionRequest.setMessages(Lists.newArrayList(message));
         chatCompletionRequest.setStream(false);
+//        chatCompletionRequest.setModel("qwen-7b-chat");
         chatCompletionRequest.setModel("qwen-plus");
         CompletionsService completionsService = new CompletionsService();
         ChatCompletionResult result = completionsService.completions(chatCompletionRequest);
@@ -165,7 +169,7 @@ public class CsvExpandForOneChat {
         String outputCsvPath = parentDir.resolve(baseName + "_output.csv").toString();
 
         List<String> lines = Files.readAllLines(inputPath, StandardCharsets.UTF_8);
-        String header = lines.get(0) + ",relation_id,relation_desc";  // 更新表头顺序
+        String header = lines.get(0) + ",relation_id,direction,child_attribute,child_weight,comments,desc";  // 更新表头顺序
         List<String[]> rows = lines.stream()
                 .skip(1)
                 .map(line -> line.split(","))
@@ -184,7 +188,7 @@ public class CsvExpandForOneChat {
                     batch.add("'" + row[1] + "' '" + row[2] + "'");
                 }
 
-                String content = "现有38种type：\n" +
+                String content = "现有如下type：\n" +
                         "因果关系、动及关系、总分关系、比较关系、隶属关系、主形关系、组互关系、表征关系、含有关系、命名关系、位置关系、组团关系、症解关系、并列关系、承接关系、转折关系、选择关系、假设关系、让步关系、递进关系、条件关系、目的关系、指代关系、虚语关系、构成关系、层级关系、来源关系、用途关系、类别关系、活动关系、描述关系、身份关系、影响关系、传承关系、时间关系、状态关系、评价关系、协作关系。\n" +
                         "要求：\n" +
                         "(1) 依据以上类别，对下面的每组词进行分类，每对之间用分号隔开。type的值即为该类型；\n" +
@@ -193,6 +197,16 @@ public class CsvExpandForOneChat {
                         "请给下面的数据进行分类： \n" +
                         String.join(";", batch) + ";\n" +
                         "注意：完整的给每组词分类，无需解释，无需其它提示词。";
+
+//                String content = "现有如下type：\n" +
+//                        "因果关系、动及关系、总分关系、比较关系、隶属关系、主形关系、组互关系、表征关系、含有关系、命名关系、位置关系、组团关系、症解关系、并列关系、承接关系、转折关系、选择关系、假设关系、让步关系、递进关系、条件关系、目的关系、指代关系、虚语关系、构成关系、层级关系、来源关系、类别关系、活动关系、身份关系、影响关系、传承关系、时间关系、状态关系、评价关系、协作关系。\n" +
+//                        "要求：\n" +
+//                        "(1) 依据以上类别，对下面的每组词进行分类，每对之间用分号隔开。type的值即为该类型；\n" +
+//                        "(2) 如果不属于所列任何一个类别，就将该节点的类别值，type就为“其它关系”; \n" +
+//                        "(3) 输出格式为：“{词A和词B属于type, 词A和词B属于type}” 例如：{新银和还款属于活动关系; 新银和负债属于状态关系};\n" +
+//                        "请给下面的数据进行分类： \n" +
+//                        String.join(";", batch) + ";\n" +
+//                        "注意：完整的给每组词分类，无需解释，无需其它提示词。";
 
                 String response = chatFor910B(content);
 
@@ -206,9 +220,14 @@ public class CsvExpandForOneChat {
                     Integer relationId = relationMap.getOrDefault(relation, 0);
                     String relationDesc = generateRelationDesc(row[1], row[2], relation);
 
-                    String[] newRow = Arrays.copyOf(row, row.length + 2);
+                    // 新增列
+                    String[] newRow = Arrays.copyOf(row, row.length + 6);
                     newRow[row.length] = String.valueOf(relationId);
                     newRow[row.length + 1] = relationDesc;
+                    newRow[row.length + 2] = "";  // child_attribute 为空
+                    newRow[row.length + 3] = "1"; // child_weight 固定为 1
+                    newRow[row.length + 4] = row[1] + relationDesc + row[2];  // comments
+                    newRow[row.length + 5] = row[1] + relationDesc + row[2];  // desc
                     processedRows.add(newRow);
 
                     currentEdgeId = Integer.parseInt(row[0]);
@@ -231,6 +250,7 @@ public class CsvExpandForOneChat {
             System.out.println("csv处理完成！");
         }
     }
+
 
     // 解析API返回的响应
     private static List<String> parseResponse(String response) {

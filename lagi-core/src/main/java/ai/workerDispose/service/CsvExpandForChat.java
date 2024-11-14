@@ -27,7 +27,8 @@ public class CsvExpandForChat {
 
     // 配置参数
     private static int batchSize = 5;
-    private static String inputCsvPath = "E:\\file\\TempFiles\\nid数据\\output_股票智能体.csv";  // 输入CSV路径
+    //    private static String inputCsvPath = "E:\\file\\TempFiles\\nid数据\\output_股票智能体.csv";  // 输入CSV路径
+    private static String inputCsvPath = "E:\\file\\TempFiles\\nid数据\\output_FAQ挖掘.csv";  // 输入CSV路径
 
     // 关系对应ID的映射
     private static final Map<String, Integer> relationMap = new HashMap<>();
@@ -245,7 +246,10 @@ public class CsvExpandForChat {
                             String.join(";", batch) + ";\n" +
                             "注意：完整的给每组词分类，无需解释，无需其它提示词。";
 
+                    System.out.println("content = " + content);
+
                     String response = chatFor910B(content);
+                    System.out.println("response = " + response);
 
                     List<String> resultList = parseResponse(response);
                     System.out.println("resultList = " + resultList);
@@ -338,13 +342,4 @@ public class CsvExpandForChat {
         }
     }
 
-    // 设置批次大小
-    public static void setBatchSize(int batchSize) {
-        CsvExpandForChat.batchSize = batchSize;
-    }
-
-    // 设置输入CSV文件路径
-    public static void setInputCsvPath(String inputCsvPath) {
-        CsvExpandForChat.inputCsvPath = inputCsvPath;
-    }
 }

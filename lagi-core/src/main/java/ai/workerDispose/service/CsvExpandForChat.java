@@ -1,4 +1,4 @@
-package ai.example;
+package ai.workerDispose.service;
 
 import ai.config.ContextLoader;
 import ai.llm.service.CompletionsService;
@@ -7,32 +7,34 @@ import ai.openai.pojo.ChatCompletionResult;
 import ai.openai.pojo.ChatMessage;
 import com.google.common.collect.Lists;
 
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class CsvExpandForOneChat {
+
+public class CsvExpandForChat {
 
     static {
         ContextLoader.loadContext();
     }
 
     // 配置参数
-    private static int batchSize = 300;  // 每批次处理的记录数量
-    //    private static String inputCsvPath = "E:\\file\\TempFiles\\test.csv";  // 输入CSV路径
-//    private static String inputCsvPath = "E:\\file\\TempFiles\\output_小信智能体测试.csv";  // 输入CSV路径
-    private static String inputCsvPath = "E:\\file\\TempFiles\\nid数据\\output_小信智能体.csv";  // 输入CSV路径
+    private static int batchSize = 5;
+    private static String inputCsvPath = "E:\\file\\TempFiles\\nid数据\\output_股票智能体.csv";  // 输入CSV路径
 
     // 关系对应ID的映射
     private static final Map<String, Integer> relationMap = new HashMap<>();
     private static final Map<String, String> relationFormatMap = new HashMap<>();
 
     static {
+        // 关系映射和格式映射的初始化，这部分和你原代码一样
         relationMap.put("因果关系", 1);
         relationMap.put("动及关系", 2);
         relationMap.put("总分关系", 3);
@@ -113,6 +115,50 @@ public class CsvExpandForOneChat {
         relationFormatMap.put("协作关系", "Collaborate-->With");
     }
 
+    // 获取last_processed_edge_id.txt的路径
+    private static Path getLastProcessedEdgeIdPath() {
+        Path inputPath = Paths.get(inputCsvPath);
+        Path parentDir = inputPath.getParent();
+        return parentDir.resolve("last_processed_edge_id.txt");
+    }
+
+    // 读取上次处理的edge_id
+    private static int readLastProcessedEdgeId() {
+        Path path = getLastProcessedEdgeIdPath();
+        if (Files.exists(path)) {
+            try (BufferedReader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
+                String content = reader.readLine().trim();
+                return Integer.parseInt(content);
+            } catch (IOException | NumberFormatException e) {
+                e.printStackTrace();
+            }
+        }
+        return 1; // 默认从1开始
+    }
+
+    // 保存当前处理的edge_id
+    private static void saveLastProcessedEdgeId(int edgeId) {
+        Path path = getLastProcessedEdgeIdPath();
+        try (BufferedWriter writer = Files.newBufferedWriter(path, StandardCharsets.UTF_8)) {
+            writer.write(String.valueOf(edgeId));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // 获取CSV文件的起始和结束edge_id
+    public static int[] getEdgeIdRange(String inputCsvPath) throws IOException {
+        List<String> lines = Files.readAllLines(Paths.get(inputCsvPath), StandardCharsets.UTF_8);
+        List<Integer> edgeIds = lines.stream()
+                .skip(1)
+                .map(line -> Integer.parseInt(line.split(",")[0]))
+                .collect(Collectors.toList());
+
+        int startEdgeId = edgeIds.stream().min(Integer::compare).orElse(1);
+        int endEdgeId = edgeIds.stream().max(Integer::compare).orElse(startEdgeId);
+        return new int[]{startEdgeId, endEdgeId};
+    }
+
     // 生成关系描述
     public static String generateRelationDesc(String parent, String child, String relation) {
         // 检查特殊的虚语关系
@@ -129,7 +175,6 @@ public class CsvExpandForOneChat {
         return format;
     }
 
-
     // 调用大模型API
     public static String chatFor910B(String content) {
         ChatCompletionRequest chatCompletionRequest = new ChatCompletionRequest();
@@ -141,113 +186,117 @@ public class CsvExpandForOneChat {
         message.setContent(content);
         chatCompletionRequest.setMessages(Lists.newArrayList(message));
         chatCompletionRequest.setStream(false);
-//        chatCompletionRequest.setModel("qwen-7b-chat");
         chatCompletionRequest.setModel("qwen-plus");
         CompletionsService completionsService = new CompletionsService();
         ChatCompletionResult result = completionsService.completions(chatCompletionRequest);
         return result.getChoices().get(0).getMessage().getContent();
     }
 
-    // 获取CSV文件的起始和结束edge_id
-    public static int[] getEdgeIdRange(String inputCsvPath) throws IOException {
-        List<String> lines = Files.readAllLines(Paths.get(inputCsvPath), StandardCharsets.UTF_8);
-        List<Integer> edgeIds = lines.stream()
-                .skip(1)
-                .map(line -> Integer.parseInt(line.split(",")[0]))
-                .collect(Collectors.toList());
 
-        int startEdgeId = edgeIds.stream().min(Integer::compare).orElse(1);
-        int endEdgeId = edgeIds.stream().max(Integer::compare).orElse(startEdgeId);
-        return new int[]{startEdgeId, endEdgeId};
-    }
+    // 在处理CSV时，使用追加模式打开文件
 
-    // 处理CSV文件
+
     public static void processCsv(String inputCsvPath, int startEdgeId, int endEdgeId) throws IOException {
         Path inputPath = Paths.get(inputCsvPath);
         String baseName = inputPath.getFileName().toString().replace(".csv", "");
         Path parentDir = inputPath.getParent();
-        String outputCsvPath = parentDir.resolve(baseName + "_output.csv").toString();
+        Path outputCsvPath = parentDir.resolve(baseName + "_output.csv");
+
+        // 确保输出文件目录存在，不存在则创建
+        if (Files.notExists(parentDir)) {
+            Files.createDirectories(parentDir);  // 创建目录
+        }
+
+        // 打印路径调试
+        System.out.println("Output file path: " + outputCsvPath);
 
         List<String> lines = Files.readAllLines(inputPath, StandardCharsets.UTF_8);
         String header = lines.get(0) + ",relation_id,direction,child_attribute,child_weight,comments,desc";  // 更新表头顺序
-        List<String[]> rows = lines.stream()
-                .skip(1)
-                .map(line -> line.split(","))
-                .collect(Collectors.toList());
 
-        List<String[]> processedRows = new ArrayList<>();
-        processedRows.add(header.split(","));
+        try (BufferedWriter writer = Files.newBufferedWriter(outputCsvPath, StandardCharsets.UTF_8,
+                StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
+            writer.write(header);
+            writer.newLine();
 
-        for (int i = startEdgeId - 1; i < endEdgeId && i < rows.size(); i += batchSize) {
-            int currentEdgeId = Integer.parseInt(rows.get(i)[0]);
+            List<String[]> rows = lines.stream()
+                    .skip(1)
+                    .map(line -> line.split(","))
+                    .collect(Collectors.toList());
 
-            try {
-                List<String> batch = new ArrayList<>();
-                for (int j = i; j < Math.min(i + batchSize, rows.size()); j++) {
-                    String[] row = rows.get(j);
-                    batch.add("'" + row[1] + "' '" + row[2] + "'");
+            int totalWritten = 0;
+
+            for (int i = startEdgeId - 1; i < endEdgeId && i < rows.size(); i += batchSize) {
+                int currentEdgeId = Integer.parseInt(rows.get(i)[0]);
+
+                try {
+                    List<String> batch = new ArrayList<>();
+                    for (int j = i; j < Math.min(i + batchSize, rows.size()); j++) {
+                        String[] row = rows.get(j);
+                        batch.add("'" + row[1] + "' '" + row[2] + "'"); // 打包数据
+                    }
+
+                    String content = "现有如下type：\n" +
+                            "因果关系、动及关系、总分关系、比较关系、隶属关系、主形关系、组互关系、表征关系、含有关系、命名关系、位置关系、组团关系、症解关系、并列关系、承接关系、转折关系、选择关系、假设关系、让步关系、递进关系、条件关系、目的关系、指代关系、虚语关系、构成关系、层级关系、来源关系、用途关系、类别关系、活动关系、描述关系、身份关系、影响关系、传承关系、时间关系、状态关系、评价关系、协作关系。\n" +
+                            "要求：\n" +
+                            "(1) 依据以上类别，对下面的每组词进行分类，每对之间用分号隔开。type的值即为该类型；\n" +
+                            "(2) 如果不属于所列任何一个类别，就将该节点的类别值，type就为“其它关系”; \n" +
+                            "(3) 输出格式为：“{词A和词B属于type, 词A和词B属于type}” 例如：{新银和贷款属于目的关系, 新银和资产负债属于系统关系};\n" +
+                            "请给下面的数据进行分类： \n" +
+                            String.join(";", batch) + ";\n" +
+                            "注意：完整的给每组词分类，无需解释，无需其它提示词。";
+
+                    String response = chatFor910B(content);
+
+                    List<String> resultList = parseResponse(response);
+                    System.out.println("resultList = " + resultList);
+
+                    for (int j = 0; j < batch.size(); j++) {
+                        if (i + j >= rows.size()) break;
+
+                        String[] row = rows.get(i + j);
+                        String relation = resultList.size() > j ? resultList.get(j) : "0";
+                        Integer relationId = relationMap.getOrDefault(relation, 0);
+                        String relationDesc = generateRelationDesc(row[1], row[2], relation);
+
+                        // 新增列
+                        String[] newRow = Arrays.copyOf(row, row.length + 6);
+                        newRow[row.length] = String.valueOf(relationId);
+                        newRow[row.length + 1] = relationDesc;
+                        newRow[row.length + 2] = "";  // child_attribute 为空
+                        newRow[row.length + 3] = "1"; // child_weight 固定为 1
+                        newRow[row.length + 4] = row[1] + relationDesc + row[2];  // comments
+                        newRow[row.length + 5] = row[1] + relationDesc + row[2];  // desc
+
+                        // 实时写入到文件
+                        writer.write(String.join(",", newRow));
+                        writer.newLine();  // 换行
+                        writer.flush();  // 强制将缓冲区内容写入文件
+
+                        totalWritten++;  // 累加写入的条数
+                    }
+
+                    double progress = Math.min(((i + batchSize) * 100.0) / (endEdgeId), 100.0);
+                    System.out.printf("当前进度: %.2f%%, 当前处理到 edge_id: %d%n", progress, currentEdgeId);
+
+                    // 保存当前的 edge_id
+                    saveLastProcessedEdgeId(currentEdgeId);
+
+                    // 提示当前写入数据条数
+                    System.out.printf("当前已写入 %d 条数据。\n", totalWritten);
+
+                } catch (Exception e) {
+                    System.err.printf("Error encountered at edge_id range [%d, %d]. Retrying...%n", currentEdgeId, endEdgeId);
+                    e.printStackTrace();
+                    i -= batchSize; // 出现异常时回退处理
                 }
-
-                String content = "现有如下type：\n" +
-                        "因果关系、动及关系、总分关系、比较关系、隶属关系、主形关系、组互关系、表征关系、含有关系、命名关系、位置关系、组团关系、症解关系、并列关系、承接关系、转折关系、选择关系、假设关系、让步关系、递进关系、条件关系、目的关系、指代关系、虚语关系、构成关系、层级关系、来源关系、用途关系、类别关系、活动关系、描述关系、身份关系、影响关系、传承关系、时间关系、状态关系、评价关系、协作关系。\n" +
-                        "要求：\n" +
-                        "(1) 依据以上类别，对下面的每组词进行分类，每对之间用分号隔开。type的值即为该类型；\n" +
-                        "(2) 如果不属于所列任何一个类别，就将该节点的类别值，type就为“其它关系”; \n" +
-                        "(3) 输出格式为：“{词A和词B属于type, 词A和词B属于type}” 例如：{新银和贷款属于目的关系, 新银和资产负债属于系统关系};\n" +
-                        "请给下面的数据进行分类： \n" +
-                        String.join(";", batch) + ";\n" +
-                        "注意：完整的给每组词分类，无需解释，无需其它提示词。";
-
-//                String content = "现有如下type：\n" +
-//                        "因果关系、动及关系、总分关系、比较关系、隶属关系、主形关系、组互关系、表征关系、含有关系、命名关系、位置关系、组团关系、症解关系、并列关系、承接关系、转折关系、选择关系、假设关系、让步关系、递进关系、条件关系、目的关系、指代关系、虚语关系、构成关系、层级关系、来源关系、类别关系、活动关系、身份关系、影响关系、传承关系、时间关系、状态关系、评价关系、协作关系。\n" +
-//                        "要求：\n" +
-//                        "(1) 依据以上类别，对下面的每组词进行分类，每对之间用分号隔开。type的值即为该类型；\n" +
-//                        "(2) 如果不属于所列任何一个类别，就将该节点的类别值，type就为“其它关系”; \n" +
-//                        "(3) 输出格式为：“{词A和词B属于type, 词A和词B属于type}” 例如：{新银和还款属于活动关系; 新银和负债属于状态关系};\n" +
-//                        "请给下面的数据进行分类： \n" +
-//                        String.join(";", batch) + ";\n" +
-//                        "注意：完整的给每组词分类，无需解释，无需其它提示词。";
-
-                String response = chatFor910B(content);
-
-                List<String> resultList = parseResponse(response);
-
-                for (int j = 0; j < batch.size(); j++) {
-                    if (i + j >= rows.size()) break;
-
-                    String[] row = rows.get(i + j);
-                    String relation = resultList.size() > j ? resultList.get(j) : "0";
-                    Integer relationId = relationMap.getOrDefault(relation, 0);
-                    String relationDesc = generateRelationDesc(row[1], row[2], relation);
-
-                    // 新增列
-                    String[] newRow = Arrays.copyOf(row, row.length + 6);
-                    newRow[row.length] = String.valueOf(relationId);
-                    newRow[row.length + 1] = relationDesc;
-                    newRow[row.length + 2] = "";  // child_attribute 为空
-                    newRow[row.length + 3] = "1"; // child_weight 固定为 1
-                    newRow[row.length + 4] = row[1] + relationDesc + row[2];  // comments
-                    newRow[row.length + 5] = row[1] + relationDesc + row[2];  // desc
-                    processedRows.add(newRow);
-
-                    currentEdgeId = Integer.parseInt(row[0]);
-                }
-
-                double progress = Math.min(((i + batchSize) * 100.0) / (endEdgeId), 100.0);
-                System.out.printf("当前进度: %.2f%%, 当前处理到 edge_id: %d%n", progress, currentEdgeId);
-            } catch (Exception e) {
-                System.err.printf("Error encountered at edge_id range [%d, %d]. Retrying...%n", currentEdgeId, endEdgeId);
-                e.printStackTrace();
-                i -= batchSize;
             }
-        }
 
-        try (BufferedWriter writer = Files.newBufferedWriter(Paths.get(outputCsvPath), StandardCharsets.UTF_8)) {
-            for (String[] row : processedRows) {
-                writer.write(String.join(",", row));
-                writer.newLine();
-            }
-            System.out.println("csv处理完成！");
+            // 处理结束后，输出总共写入的条数
+            System.out.printf("CSV处理完成，共写入了 %d 条数据！%n", totalWritten);
+
+        } catch (IOException e) {
+            System.err.println("Error writing to file: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
@@ -281,6 +330,8 @@ public class CsvExpandForOneChat {
             int startEdgeId = edgeIdRange[0];
             int endEdgeId = edgeIdRange[1];
 
+            // 读取上次处理的edge_id
+            startEdgeId = readLastProcessedEdgeId();
             processCsv(inputCsvPath, startEdgeId, endEdgeId);
         } catch (IOException e) {
             e.printStackTrace();
@@ -289,11 +340,11 @@ public class CsvExpandForOneChat {
 
     // 设置批次大小
     public static void setBatchSize(int batchSize) {
-        CsvExpandForOneChat.batchSize = batchSize;
+        CsvExpandForChat.batchSize = batchSize;
     }
 
     // 设置输入CSV文件路径
     public static void setInputCsvPath(String inputCsvPath) {
-        CsvExpandForOneChat.inputCsvPath = inputCsvPath;
+        CsvExpandForChat.inputCsvPath = inputCsvPath;
     }
 }

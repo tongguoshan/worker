@@ -252,6 +252,7 @@ public class DictClassify {
                 "(2) 如果不属于所列任何一个类别，就将该节点的类别值，type就标记为“其它”;\n" +
                 "(3) 如果该词不仅不属于任何一个类别，且是错误的词语(生造词)，则将该节点的type值，标记为“生造词”;\n" +
                 "(4) 输出格式为：“{name属于type, name属于type}” 例如：{小鸡属于生物,麻辣香锅属于食物};\n" +
+                "(5) “大括号只能出现一个” ;\n" +
                 "请给下面的数据进行分类： \033[0;94m \n “"};
         String[] promptTail = {"”\n \033[0m 注意：无需解释，无需其它提示词，只要输出“{name属于type, name属于type}” 的数据即可。"};
 
@@ -279,6 +280,7 @@ public class DictClassify {
                 "(2) 如果不属于所列任何一个类别，就将该节点的类别值，type就为“其它”;\n" +
                 "(3) 如果该词不仅不属于任何一个类别，且是错误的词语(生造词)，则将该节点的type就为“生造词”;\n" +
                 "(4) 输出格式为：“{name属于type, name属于type}” 例如：{小鸡属于生物,麻辣香锅属于食物};\n" +
+                "(5) “大括号只能出现一个” ;\n" +
                 "请给下面的数据进行分类： \033[0;94m \n “"};
         String[] promptTail = {"”\n \033[0m 注意：无需解释，无需其它提示词，只要输出“{name属于type, name属于type}” 的数据即可。"};
 
@@ -306,6 +308,7 @@ public class DictClassify {
                 "(2) 如果不属于所列任何一个类别，就将该节点的类别值，type就为“其它”;\n" +
                 "(3) 如果该词不仅不属于任何一个类别，且是错误的词语(生造词)，则将该节点的type就为“生造词”;\n" +
                 "(4) 输出格式为：“{name属于type, name属于type}” 例如：{小鸡属于生物,麻辣香锅属于食物};\n" +
+                "(5) “大括号只能出现一个” ;\n" +
                 "请给完整的下面的数据进行分类： \033[0;94m \n “"};
         String[] promptTail = {"”\n \033[0m 注意：无需解释，无需其它提示词，只要完整的输出“{name属于type, name属于type}” 的数据即可。"};
 
@@ -333,6 +336,7 @@ public class DictClassify {
                 "(2) 如果不属于所列任何一个类别，就将该节点的类别值，type就为“其它”;\n" +
                 "(3) 如果该词不仅不属于任何一个类别，且是错误的词语(生造词)，则将该节点的type就为“生造词”;\n" +
                 "(4) 输出格式为：“{name属于type, name属于type}” 例如：{小鸡属于生物,麻辣香锅属于食物};\n" +
+                "(5) “大括号只能出现一个” ;\n" +
                 "请完整的给下面的数据进行分类： \033[0;94m \n “"};
         String[] promptTail = {"”\n \033[0m 注意：无需解释，无需其它提示词，只要完整的输出“{name属于type, name属于type}” 的数据即可。"};
 
@@ -374,7 +378,7 @@ public class DictClassify {
     @Test
     public void qianyi_ai_node_candidate(){
       String filePath = "D:\\OfFile\\test11111.csv";
-      Integer batchLimit = 50;
+      Integer batchLimit = 20;
       Integer minNodeId = 1;
       Integer maxNodeId = 419268;
       Integer jishu = 0;
@@ -382,10 +386,10 @@ public class DictClassify {
           jishu++;
         List<General2> list = aiZindexUserDao.getQianyiAiNodeCandidate(batchLimit,minNodeId,maxNodeId);
           //System.out.println("第" + jishu + "次分类，当前第一条nid为：" + minNodeId);
-          minNodeId = list.get(list.size() - 1).getId() + 1;
+          minNodeId = list.get(list.size() - 1).getNodeId() + 1;
           System.out.println("第" + jishu + "次分类，当前最后一条nid为：" + maxNodeId);
           String result = list.stream()
-                  .map(general -> String.valueOf(general.getId()))
+                  .map(general -> String.valueOf(general.getNid()))
                   .collect(Collectors.joining(","));
           categorizationOperations(result,filePath);
       }
@@ -670,6 +674,7 @@ public class DictClassify {
                 "(2) 如果不属于所列任何一个类别，就将该节点的类别值，type就为“其它”;\n" +
                 "(3) 如果该词不仅不属于任何一个类别，且是错误的词语(生造词)，则将该节点的type就为“生造词”;\n" +
                 "(4) 输出格式为：“{name属于type, name属于type}” 例如：{小鸡属于生物,麻辣香锅属于食物};\n" +
+                "(5) “大括号只能出现一个” ;\n" +
                 "请给下面的数据进行分类：  \n" +
                 " “拏风,眔,短绌,四徯,霂雾,八牕,忧愤,髴兮,苛烈,嘈闲,荡飏,穹礴,邹媖,古郯,灿昀,诚惶,屡戒,偓体,视阈,渤澥,檄愈,浪蘂,继晷,婵,瑛,鸿毳,柳瀬,莋脚,隳肝,咯定,握杼,婸姬,梦婕,杷罗,贲临,挨踢,笹原,礑溪,広,濩泽,发愤,漏虀,若辱,枯涸,袒裎,楡,三襕,蒲缥,诩,镒韵,粪甾,献杵,成懴,大睄,祾,堑,锦厪,樯桅,煜,尕,浰,溧,嵋,簠,祯,琊,闺,俟奋,东矣,雩溪,农孵,防蔽,杵状,向阪,益溆,小嶋,铝业,撅坑,撅堑,沢木,黟山,煌熇,晶穂,黥武,含糗,雪浥,阪,雨浥,髌,讪牙,锍潋,埒才,扁鯺,美嵨,绋尘,辋穿,天瞾,吴垭,西赆,泺黄,”\n" +
                 " 注意：完整的给每一个词分类，无需解释，无需其它提示词。";
@@ -689,8 +694,8 @@ public class DictClassify {
         chatCompletionRequest.setMessages(Lists.newArrayList(message));
         // Set the stream parameter to false
         chatCompletionRequest.setStream(false);
-        chatCompletionRequest.setModel("Qwen-14b");
-        //chatCompletionRequest.setModel("Baichuan-13b");
+        //chatCompletionRequest.setModel("Qwen-14b");
+        chatCompletionRequest.setModel("Baichuan-13b");
         //chatCompletionRequest.setModel("glm-3-turbo");
         //chatCompletionRequest.setModel("ERNIE-Speed-128K");
         //chatCompletionRequest.setModel("v3.5");
@@ -783,6 +788,8 @@ public class DictClassify {
         chatCompletionRequest.setStream(false);
         //chatCompletionRequest.setModel("moonshot-v1-128k");
         chatCompletionRequest.setModel("Baichuan-13b");
+        //chatCompletionRequest.setModel("Qwen-14b");
+
 
         CompletionsService completionsService = new CompletionsService();
         ChatCompletionResult result = null;

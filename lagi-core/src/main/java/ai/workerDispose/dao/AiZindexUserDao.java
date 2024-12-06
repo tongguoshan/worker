@@ -11,7 +11,10 @@ import java.util.stream.Collectors;
 public class AiZindexUserDao extends MysqlAdapter {
 
     public List<General2> getQianyiAiNodeCandidate(int batchLimit,Integer minNodeId,Integer maxNodeId) {
-        String sql = "SELECT name  AS value,node_id AS id FROM ai_node_candidate anc WHERE anc.node_id BETWEEN ? AND ? ORDER BY anc.node_id LIMIT ?";
+        //String sql = "SELECT name  AS value,node_id AS id FROM ai_node_candidate anc WHERE anc.node_id BETWEEN ? AND ? ORDER BY anc.node_id LIMIT ?";
+        String sql = "SELECT nid, node_id AS nodeId FROM ai.ai_node_candidate as anc "+
+        " left join ai_unindex_node as aun on aun.sub_id_in_table = anc.node_id " +
+        " WHERE anc.node_id BETWEEN ? AND ? AND sub_node_table_index = 74 ORDER BY anc.node_id LIMIT ?;";
         List<General2> list = select(General2.class, sql,minNodeId,maxNodeId, batchLimit);
         return list.size() > 0 && list != null ? list : new ArrayList<>();
     }
@@ -100,7 +103,9 @@ public class AiZindexUserDao extends MysqlAdapter {
     }
 
     public boolean getQianyiAiNodeCandidateCount(Integer minNid,Integer maxNid) {
-        String sql = "SELECT COUNT(*) FROM ai_node_candidate anc WHERE anc.node_id BETWEEN ? AND ? ORDER BY anc.node_id";
+        String sql = "SELECT count(*) FROM ai.ai_node_candidate as anc "+
+        " left join ai_unindex_node as aun on aun.sub_id_in_table = anc.node_id " +
+        " WHERE anc.node_id BETWEEN ? AND ? AND sub_node_table_index = 74 ORDER BY anc.node_id;";
         Integer msg = selectCount(sql,minNid,maxNid);
         return msg > 0;
     }

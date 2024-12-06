@@ -8,6 +8,6 @@ import lombok.*;
 @AllArgsConstructor
 @Data
 public class General2 {
-    private Integer id;
-    private String value;
+    private Integer nodeId;
+    private Integer nid;
 }

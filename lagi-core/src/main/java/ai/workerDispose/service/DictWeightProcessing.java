@@ -78,7 +78,7 @@ public class DictWeightProcessing {
             progress = new DictWeightProgress();
             progress.setStartPage(startPage);
             progress.setEndPage(endPage);
-            progress.setProcessedPage(1);
+            progress.setProcessedPage(startPage);
             saveToJsonFile(progress, getDictWeightProgressFile());
         }
         int i = progress.getProcessedPage();

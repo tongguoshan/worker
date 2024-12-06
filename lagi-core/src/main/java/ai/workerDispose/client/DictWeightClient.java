@@ -12,9 +12,9 @@ public class DictWeightClient {
     private static final DictWeightProcessing dictWeightProcessing = new DictWeightProcessing();
 
     public static void main(String[] args) {
-//        dictWeightProcessing.dictWeightProcess(START_PAGE, END_PAGE, PAGE_SIZE);
+        dictWeightProcessing.dictWeightProcess(START_PAGE, END_PAGE, PAGE_SIZE);
 
-        String filepath = "E:/Desktop/nid数据/1.csv";
-        dictWeightProcessing.dictWeightProcess(filepath);
+//        String filepath = "E:/Desktop/nid数据/1.csv";
+//        dictWeightProcessing.dictWeightProcess(filepath);
     }
 }

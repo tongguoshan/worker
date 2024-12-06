@@ -16,9 +16,11 @@ import ai.workerDispose.pojo.*;
 import cn.hutool.core.bean.BeanUtil;
 import com.google.common.collect.Lists;
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -44,15 +46,62 @@ public class DictWeightProcessing {
     private static final String VECTOR_QUERY_URL = "https://lagi.saasai.top/v1/vector/query";
     private static final String CATEGORY = "dict";
     private static final double QUERY_SIMILARITY = 0.15;
+    private static final String DICT_WEIGHT_PROGRESS_FILE = "DictWeightProgress.json";
+
+    private String getDictWeightProgressFile() {
+        return System.getProperty("user.home") + "/" + DICT_WEIGHT_PROGRESS_FILE;
+    }
+
+    private void saveToJsonFile(DictWeightProgress progress, String filePath) {
+        Gson gson = new GsonBuilder().setPrettyPrinting().create(); // 美化 JSON 输出
+        try (FileWriter writer = new FileWriter(filePath)) {
+            gson.toJson(progress, writer);
+            System.out.println("对象已成功保存到文件：" + filePath);
+        } catch (IOException e) {
+            System.err.println("写入 JSON 文件时出错：" + e.getMessage());
+        }
+    }
+
+    private DictWeightProgress readFromJsonFile(String filePath) {
+        Gson gson = new Gson();
+        try (FileReader reader = new FileReader(filePath)) {
+            return gson.fromJson(reader, DictWeightProgress.class);
+        } catch (IOException e) {
+            System.err.println("读取 JSON 文件时出错：" + e.getMessage());
+            return null;
+        }
+    }
 
     public void dictWeightProcess(int startPage, int endPage, int pageSize) {
-        for (int i = startPage; i <= endPage; i++) {
+        DictWeightProgress progress = readFromJsonFile(getDictWeightProgressFile());
+        if (progress == null) {
+            progress = new DictWeightProgress();
+            progress.setStartPage(startPage);
+            progress.setEndPage(endPage);
+            progress.setProcessedPage(1);
+            saveToJsonFile(progress, getDictWeightProgressFile());
+        }
+        int i = progress.getProcessedPage();
+        while (i <= endPage) {
             System.out.println("\n\nCurrent page is " + i + ", time is " + simpleDateFormat.format(new Date()));
             try {
                 dictWeightProcess(pageSize, i);
             } catch (Exception e) {
                 e.printStackTrace();
+                sleep(1000 * 30);
+                continue;
             }
+            progress.setProcessedPage(i);
+            saveToJsonFile(progress, getDictWeightProgressFile());
+            i++;
+        }
+    }
+
+    private void sleep(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         }
     }
 

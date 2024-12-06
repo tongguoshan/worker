@@ -9,6 +9,16 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class AiZindexUserDao extends MysqlAdapter {
+
+    public List<General2> getQianyiAiNodeCandidate(int batchLimit,Integer minNodeId,Integer maxNodeId) {
+        //String sql = "SELECT name  AS value,node_id AS id FROM ai_node_candidate anc WHERE anc.node_id BETWEEN ? AND ? ORDER BY anc.node_id LIMIT ?";
+        String sql = "SELECT nid, node_id AS nodeId FROM ai.ai_node_candidate as anc "+
+        " left join ai_unindex_node as aun on aun.sub_id_in_table = anc.node_id " +
+        " WHERE anc.node_id BETWEEN ? AND ? AND sub_node_table_index = 74 ORDER BY anc.node_id LIMIT ?;";
+        List<General2> list = select(General2.class, sql,minNodeId,maxNodeId, batchLimit);
+        return list.size() > 0 && list != null ? list : new ArrayList<>();
+    }
+
     /**
      * 查询
      * @return
@@ -81,6 +91,7 @@ public class AiZindexUserDao extends MysqlAdapter {
                 "(SELECT aun.nid,aun.sub_id_in_table AS id ,aun.sub_node_table_index FROM " +
                 " ai_unindex_node aun WHERE aun.sub_node_table_index = ? AND aun.nid BETWEEN ? AND ? ORDER BY aun.nid ) nodes\n" +
                 "LEFT JOIN ai_node_candidate anc ON nodes.id = anc.node_id LIMIT ?;";
+
         List<ClassifyTxt> list = select(ClassifyTxt.class, sql,snti,minNid,maxNid, batchLimit);
         return list.size() > 0 && list != null ? list : new ArrayList<>();
     }
@@ -88,6 +99,14 @@ public class AiZindexUserDao extends MysqlAdapter {
     public boolean getClassifyTxtCount(int snti,Integer minNid,Integer maxNid) {
         String sql = "SELECT count(*) FROM ai_unindex_node aun WHERE aun.sub_node_table_index = ? AND aun.nid BETWEEN ? AND ? ORDER BY aun.nid;";
         Integer msg = selectCount(sql,snti,minNid,maxNid);
+        return msg > 0;
+    }
+
+    public boolean getQianyiAiNodeCandidateCount(Integer minNid,Integer maxNid) {
+        String sql = "SELECT count(*) FROM ai.ai_node_candidate as anc "+
+        " left join ai_unindex_node as aun on aun.sub_id_in_table = anc.node_id " +
+        " WHERE anc.node_id BETWEEN ? AND ? AND sub_node_table_index = 74 ORDER BY anc.node_id;";
+        Integer msg = selectCount(sql,minNid,maxNid);
         return msg > 0;
     }
 

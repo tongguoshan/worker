@@ -10,7 +10,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 public class ConversionTypeUtils {
 
@@ -55,6 +54,32 @@ public class ConversionTypeUtils {
             }
         }
         return map;
+    }
+
+    /**
+     * 切割
+     * @param nids
+     * @return
+     */
+    public static String[] splitStringByChunks(String nids, Integer chunkSize) {
+        String[] nidsArray = nids.split(",");  // 先按逗号分割成数组
+        int numChunks = (int) Math.ceil((double) nidsArray.length / chunkSize);  // 计算分割后数组的数量
+
+        String[] result = new String[numChunks];
+
+        // 将 nids 按照 chunkSize 分割
+        for (int i = 0; i < numChunks; i++) {
+            StringBuilder chunk = new StringBuilder();
+            for (int j = i * chunkSize; j < (i + 1) * chunkSize && j < nidsArray.length; j++) {
+                if (chunk.length() > 0) {
+                    chunk.append(",");  // 添加逗号分隔符
+                }
+                chunk.append(nidsArray[j]);
+            }
+            result[i] = chunk.toString();  // 将生成的子字符串添加到结果数组
+        }
+
+        return result;
     }
 
     public static Map<String, String> getKeyByClassId(Map<String, String> map,Map<String, String> idANDValueMap) {
@@ -190,6 +215,7 @@ public class ConversionTypeUtils {
 
     public static List<WriteClassifyCvs> getKeyByClassId(Map<String, String> map, List<ClassifyTxt> classifyTxtsList) {
 
+        System.out.println("处理前个数"+classifyTxtsList.size());
         List<WriteClassifyCvs> result = new ArrayList<>();
         Map<String, String> categoryMap = new HashMap<>();
         categoryMap.put("生物", "1");
@@ -244,19 +270,40 @@ public class ConversionTypeUtils {
         categoryMap.put("特征", "50");
         categoryMap.put("其它", "0");
         categoryMap.put("生造词", "-1");
-        for (String key : map.keySet()) {
-            String type = categoryMap.get(map.get(key.trim()));
-            List<ClassifyTxt> filteredList = classifyTxtsList.stream()
-                    .filter(node -> key.equals(node.getNode_text()))
-                    .collect(Collectors.toList());
-            if (filteredList!=null &&filteredList.size()>0){
-                for (ClassifyTxt node : filteredList){
-                    //new WriteClassifyCvs(null,null,null,null,null,null,null);
-                    result.add(new WriteClassifyCvs(node.getNid(),node.getNode_id(),node.getId(),node.getDesc(),node.getNode_text(),type,node.getSub_node_table_index()));
-                }
+//        for (String key : map.keySet()) {
+//            String type = categoryMap.get(map.get(key.trim()));
+//            List<ClassifyTxt> filteredList = classifyTxtsList.stream()
+//                    .filter(node -> key.equals(node.getNode_text()))
+//                    .collect(Collectors.toList());
+//            if (filteredList!=null &&filteredList.size()>0){
+//                for (ClassifyTxt node : filteredList){
+//                    //new WriteClassifyCvs(null,null,null,null,null,null,null);
+//                    result.add(new WriteClassifyCvs(node.getNid(),node.getNode_id(),node.getId(),node.getDesc(),node.getNode_text(),type,node.getSub_node_table_index()));
+//                }
+//            }
+//        }
+
+        for (ClassifyTxt node : classifyTxtsList) {
+            String type = categoryMap.get(map.get(node.getNode_text().trim())); // 获取类型
+
+            // 如果找不到对应的类型，使用默认值 "0"
+            if (type == null) {
+                type = "0";
             }
+
+            // 不论 map 中是否找到匹配，都会将当前 node 转换为 WriteClassifyCvs 并添加到 result
+            result.add(new WriteClassifyCvs(
+                    node.getNid(),
+                    node.getNode_id(),
+                    node.getId(),
+                    node.getDesc(),
+                    node.getNode_text(),
+                    type,
+                    node.getSub_node_table_index()
+            ));
         }
-        System.out.println("转换后的结果："+result);
+        System.out.println("处理后个数"+result.size());
+        //System.out.println("转换后的结果："+result);
         return result;
     }
 

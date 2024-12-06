@@ -13,6 +13,7 @@ import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 
 public class Dispose {
 
@@ -64,7 +65,7 @@ public class Dispose {
         int wordCount = 0; // 初始化词计数器
 
         String idto = "";
-        try (BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(csvFilePath), Charset.forName("UTF-8")))) {
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(csvFilePath), StandardCharsets.UTF_8))) {
 
             String line;
 
@@ -96,7 +97,7 @@ public class Dispose {
                  //当达到批次的词数限制时
                 if (wordCount % batchLimit == 0) {
                     // 执行分析逻辑，例如打印或处理batchContent
-                    System.out.println("分析从第" + (wordCount - batchLimit*pici + 1) + ":"+batchContent.toString()+"个开始的批次");
+                    System.out.println("分析从第" + (wordCount - batchLimit*pici + 1) + ":"+ batchContent +"个开始的批次");
                     String keywords = analyse1(startAtWord,  wordCount,  idto,  content);
                     String result = WriteIds.do1(keywords,csvFilePath,csvFilePath1);
                     //String result = "";
@@ -118,7 +119,7 @@ public class Dispose {
             // 处理最后一个批次（如果有剩余的词）
             if (batchContent.length() > 0) {
                 System.out.println("分析从第" + (wordCount - batchLimit*pici + 1) + ":"+batchContent+"个开始的批次");
-                System.out.println(batchContent.toString());
+                System.out.println(batchContent);
                 String keywords = analyse1(startAtWord,  wordCount,  idto,  content);
                 String result = WriteIds.do1(keywords,csvFilePath,csvFilePath1);
                 //String result = "";
@@ -136,7 +137,7 @@ public class Dispose {
     }
 
     private static String analyse(int startAtWord, int wordCount, String idto, String content) {
-        System.out.println("该处的id为："+ idto +"");
+        System.out.println("该处的id为："+ idto);
         String content1 = "帮我从下面的词语中找出不是正常沟通使用的语句语序词汇“";
         content1 += content+
                 "” \n 帮我找出不是正常沟通使用的语句语序词汇,再用英文的逗号进行拼接给我，只用返回这些词汇就行，不用返回其它的提示词，不用反回注意事项,没有就不返回";
@@ -148,7 +149,7 @@ public class Dispose {
     }
 
     private static String analyse1(int startAtWord, int wordCount, String idto, String content) {
-        System.out.println("该处的id为："+ idto +"");
+        System.out.println("该处的id为："+ idto);
         String[] promptHead = {"请根据词组含义找出不正常的词组“","请帮我把没有实际意义的词汇挑出来。相关字符为：“"};
         String[] promptTail = {"” \n ，请再用逗号进行拼接给我，只用返回这些词汇就行，不用返回其它提示词","” \n ,请把无意义的词挑出来，并用英文逗号进行拼接给我，只用返回这些词汇就行，不用返回注意事项，我只需要没有实际意义的词汇。"};
         String content1 = promptHead[0];

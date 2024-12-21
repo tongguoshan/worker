@@ -182,11 +182,8 @@ public class DictWeightProcessing {
     }
 
     private List<IndexRecord> query(IndexDictValues dictValue) {
-        try {
-            return queryRemote(dictValue);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        return queryLocal(dictValue);
+
     }
 
     private List<IndexRecord> queryLocal(IndexDictValues dictValue) {
@@ -200,7 +197,7 @@ public class DictWeightProcessing {
             queryCondition.setWhere(where);
             list1 = vectorStoreService.query(queryCondition, CATEGORY);
             list1 = list1.stream()
-                    .filter(record -> record.getDistance() < 0.1)
+                    .filter(record -> record.getDistance() < QUERY_SIMILARITY)
                     .collect(Collectors.toList());
             if (list1.size() == n) {
                 n = n * 2;

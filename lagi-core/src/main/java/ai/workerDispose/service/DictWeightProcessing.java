@@ -362,7 +362,7 @@ public class DictWeightProcessing {
         // 使用 Pattern 和 Matcher 进行不区分大小写的替换
         String replaced = Pattern.compile(target, Pattern.CASE_INSENSITIVE)
                 .matcher(original)
-                .replaceAll(replacement);
+                .replaceAll(Matcher.quoteReplacement(replacement));
         // 将替换后的字符串转换为小写
         return replaced.toLowerCase();
     }

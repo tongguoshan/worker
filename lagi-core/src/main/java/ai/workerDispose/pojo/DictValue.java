@@ -7,6 +7,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Data
+@EqualsAndHashCode
 public class DictValue {
     private Integer did;
     private String plainText;

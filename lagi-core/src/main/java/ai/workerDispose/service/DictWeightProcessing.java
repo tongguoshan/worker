@@ -16,11 +16,7 @@ import ai.workerDispose.pojo.*;
 import cn.hutool.core.bean.BeanUtil;
 import com.google.common.collect.Lists;
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -46,97 +42,6 @@ public class DictWeightProcessing {
     private static final String VECTOR_QUERY_URL = "https://lagi.saasai.top/v1/vector/query";
     private static final String CATEGORY = "dict";
     private static final double QUERY_SIMILARITY = 0.15;
-    private static final String DICT_WEIGHT_PROGRESS_FILE = "DictWeightProgress.json";
-
-    private String getDictWeightProgressFile() {
-        return System.getProperty("user.home") + "/" + DICT_WEIGHT_PROGRESS_FILE;
-    }
-
-    private void saveToJsonFile(DictWeightProgress progress, String filePath) {
-        Gson gson = new GsonBuilder().setPrettyPrinting().create(); // 美化 JSON 输出
-        try (FileWriter writer = new FileWriter(filePath)) {
-            gson.toJson(progress, writer);
-            System.out.println("对象已成功保存到文件：" + filePath);
-        } catch (IOException e) {
-            System.err.println("写入 JSON 文件时出错：" + e.getMessage());
-        }
-    }
-
-    private DictWeightProgress readFromJsonFile(String filePath) {
-        Gson gson = new Gson();
-        try (FileReader reader = new FileReader(filePath)) {
-            return gson.fromJson(reader, DictWeightProgress.class);
-        } catch (IOException e) {
-            System.err.println("读取 JSON 文件时出错：" + e.getMessage());
-            return null;
-        }
-    }
-
-    public void dictWeightProcess(int startPage, int endPage, int pageSize) {
-        DictWeightProgress progress = readFromJsonFile(getDictWeightProgressFile());
-        if (progress == null) {
-            progress = new DictWeightProgress();
-            progress.setStartPage(startPage);
-            progress.setEndPage(endPage);
-            progress.setProcessedPage(startPage);
-            saveToJsonFile(progress, getDictWeightProgressFile());
-        }
-        int i = progress.getProcessedPage();
-        while (i <= endPage) {
-            System.out.println("\n\nCurrent page is " + i + ", time is " + simpleDateFormat.format(new Date()));
-            try {
-                dictWeightProcess(pageSize, i);
-            } catch (Exception e) {
-                e.printStackTrace();
-                sleep(1000 * 30);
-                continue;
-            }
-            progress.setProcessedPage(i);
-            saveToJsonFile(progress, getDictWeightProgressFile());
-            i++;
-        }
-    }
-
-    private void sleep(long millis) {
-        try {
-            Thread.sleep(millis);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void dictWeightProcess(int pageSize, int i) {
-        List<DictValue> dictList = aiZindexUserDao.getDictList(i, pageSize);
-        dictWeightProcess(dictList);
-    }
-
-    public void dictWeightProcess(String filepath) {
-        List<DictValue> dictValueList = getDictValueFromFilePath(filepath);
-        for (int i = 0; i <= dictValueList.size(); i++) {
-            System.out.println("\n\nCurrent index is " + i + ", time is " + simpleDateFormat.format(new Date()));
-            try {
-                dictWeightProcess(Collections.singletonList(dictValueList.get(i)));
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
-    private List<DictValue> getDictValueFromFilePath(String filepath) {
-        List<DictValue> dictValueList = new ArrayList<>();
-        try {
-            BufferedReader br = new BufferedReader(new FileReader(filepath));
-            String line;
-            while ((line = br.readLine()) != null) {
-                String[] values = line.split(",");
-                dictValueList.add(new DictValue(Integer.parseInt(values[0]), values[1]));
-            }
-            br.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return dictValueList;
-    }
 
     public void dictWeightProcess(List<DictValue> dictList) {
         List<IndexDictValues> indexDictValuesList = new ArrayList<>();

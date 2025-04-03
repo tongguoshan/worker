@@ -47,7 +47,7 @@ public class DictWeightClient {
         dictWeightProcessFromDb();
 
 //        String filepath = "E:/Desktop/nid数据/1.csv";
-//        dictWeightProcessing.dictWeightProcess(filepath);
+//        dictWeightProcessFromFile(filepath);
     }
 
     private static void dictWeightProcessFromDb() {

@@ -44,10 +44,10 @@ public class DictWeightClient {
     }
 
     public static void main(String[] args) {
-        dictWeightProcessFromDb();
+//        dictWeightProcessFromDb();
 
-//        String filepath = "E:/Desktop/nid数据/1.csv";
-//        dictWeightProcessFromFile(filepath);
+        String filepath = "E:/Desktop/CLUD与MMLU/did/Dict-CLUD与MMLU_1.txt";
+        dictWeightProcessFromFile(filepath);
     }
 
     private static void dictWeightProcessFromDb() {
@@ -61,7 +61,7 @@ public class DictWeightClient {
 
     public static void dictWeightProcessFromFile(String filepath) {
         List<DictValue> dictValueList = getDictValueFromFilePath(filepath);
-        for (int i = 0; i <= dictValueList.size(); i++) {
+        for (int i = 0; i < dictValueList.size(); i++) {
             DictValue dictValue = dictValueList.get(i);
             executor.submit(() -> asyncDictWeightProcess(dictValue));
         }

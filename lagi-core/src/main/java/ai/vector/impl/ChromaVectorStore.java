@@ -110,7 +110,7 @@ public class ChromaVectorStore extends BaseVectorStore {
         try {
             qr = collection.query(queryTexts, n, where, null, null);
         } catch (ApiException e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
         if (qr == null) {
             return result;

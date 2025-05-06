@@ -283,30 +283,17 @@ public class DictWeightProcessing {
         chatCompletionRequest.setStream(false);
         CompletionsService completionsService = new CompletionsService();
         ChatCompletionResult result;
-        boolean isf = true;
         String retry = null;
-        while (isf) {
-            try {
-                long start = System.currentTimeMillis();
-                result = completionsService.completions(chatCompletionRequest);
-                long end = System.currentTimeMillis();
-                System.out.println("LLM completion time：" + (end - start) + "ms");
-                if (result != null && result.getChoices() != null && result.getChoices().size() > 0) {
-                    retry = result.getChoices().get(0).getMessage().getContent();
-                    if (retry != null) {
-                        isf = false;
-                    }
-                }
-            } catch (Exception e) {
-                try {
-                    Thread.sleep(1000);
-                    System.out.println("访问出错了");
-                } catch (Exception e1) {
-                    System.out.println("等待都失败了！");
-                }
+        long start = System.currentTimeMillis();
+        result = completionsService.completions(chatCompletionRequest);
+        long end = System.currentTimeMillis();
+        System.out.println("LLM completion time：" + (end - start) + "ms");
+        if (result != null && result.getChoices() != null && result.getChoices().size() > 0) {
+            retry = result.getChoices().get(0).getMessage().getContent();
+            if (retry != null && retry.contains("包含不安全或敏感内容")) {
+                throw new RuntimeException(retry);
             }
         }
-
         return retry;
     }
 

@@ -8,6 +8,7 @@ import ai.openai.pojo.ChatCompletionChoice;
 import ai.openai.pojo.ChatCompletionRequest;
 import ai.openai.pojo.ChatCompletionResult;
 import ai.openai.pojo.ChatMessage;
+import com.google.gson.Gson;
 import com.zhipu.oapi.ClientV4;
 import com.zhipu.oapi.Constants;
 import com.zhipu.oapi.service.v4.model.ModelApiResponse;
@@ -18,13 +19,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-@LLM(modelNames = { "glm-3-turbo","glm-4", "glm-4v"})
+@LLM(modelNames = {"glm-3-turbo", "glm-4", "glm-4v"})
 public class ZhipuAdapter extends ModelService implements ILlmAdapter {
-
+    private static final Gson gson = new Gson();
 
     @Override
     public boolean verify() {
-        if(getApiKey() == null || getApiKey().startsWith("you")) {
+        if (getApiKey() == null || getApiKey().startsWith("you")) {
             return false;
         }
         return true;
@@ -34,7 +35,17 @@ public class ZhipuAdapter extends ModelService implements ILlmAdapter {
     public ChatCompletionResult completions(ChatCompletionRequest chatCompletionRequest) {
         ClientV4 client = new ClientV4.Builder(getApiKey()).build();
         ModelApiResponse invokeModelApiResp = client.invokeModelApi(convertRequest(chatCompletionRequest));
+        if (invokeModelApiResp.getCode() == 400) {
+            return getDummyCompletion(invokeModelApiResp.getMsg());
+        }
         return convertResponse(invokeModelApiResp.getData());
+    }
+
+    private ChatCompletionResult getDummyCompletion(String message) {
+        String json = "{\"created\":1719495617,\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\"," +
+                "\"content\":\"" + message + "\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":38," +
+                "\"completion_tokens\":8,\"total_tokens\":46}}\n";
+        return gson.fromJson(json, ChatCompletionResult.class);
     }
 
     @Override

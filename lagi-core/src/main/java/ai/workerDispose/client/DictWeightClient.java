@@ -18,11 +18,20 @@ import java.util.concurrent.TimeUnit;
 public class DictWeightClient {
     private static final Logger logger = LoggerFactory.getLogger(DictWeightClient.class);
 
-    // page range is 1 to 7000000
-    private static final int START_PAGE = 1;
-    private static final int END_PAGE = 5;
-    private static final int PAGE_SIZE = 1;
-    private static final int THREAD_POOL_SIZE = 3;
+    /**
+     * The start and end index for processing dict values from the database.
+     * 3333:       1 ~ 1000000
+     * 3334: 1000000 ~ 2000000
+     * 3335: 2000000 ~ 3000000
+     * 3336: 3000000 ~ 4000000
+     * 3337: 4000000 ~ 5000000
+     * 3338: 5000000 ~ 7000000
+     */
+    private static final int START_INDEX = 2000000;
+    private static final int END_INDEX = 3000000;
+    private static final int PAGE_SIZE = 10000;
+
+    private static final int THREAD_POOL_SIZE = 49;
 
     private static final DictWeightProcessing dictWeightProcessing = new DictWeightProcessing();
     private static final AiZindexUserDao aiZindexUserDao = new AiZindexUserDao();
@@ -44,18 +53,21 @@ public class DictWeightClient {
     }
 
     public static void main(String[] args) {
-//        dictWeightProcessFromDb();
+        dictWeightProcessFromDb();
 
-        String filepath = "E:/Desktop/CLUD与MMLU/did/Dict-CLUD与MMLU_1.txt";
-        dictWeightProcessFromFile(filepath);
+//        String filepath = "C:\\Users\\landingbj\\Desktop\\lagi-dict\\CLUD与MMLU\\did\\Dict-CLUD与MMLU_2.txt";
+//        dictWeightProcessFromFile(filepath);
     }
 
     private static void dictWeightProcessFromDb() {
-        for (int i = START_PAGE; i < END_PAGE; i++) {
-            List<DictValue> dictList = aiZindexUserDao.getDictList(i, PAGE_SIZE);
+        int offset = START_INDEX;
+        while (offset < END_INDEX) {
+            int limit = Math.min(PAGE_SIZE, END_INDEX - offset + 1);
+            List<DictValue> dictList = aiZindexUserDao.getDictList(offset, limit);
             for (DictValue dictValue : dictList) {
                 executor.submit(() -> asyncDictWeightProcess(dictValue));
             }
+            offset += limit;
         }
     }
 
@@ -82,6 +94,11 @@ public class DictWeightClient {
                 break;
             } catch (Exception e) {
                 logger.error("Error processing dict value: {}, error: {}", dictValue, e.getMessage());
+                if (e.getMessage() != null && e.getMessage().contains("包含不安全或敏感内容")) {
+                    logger.info("Dict value contains sensitive content: {}", dictValue);
+                    return;
+                }
+                logger.info("Retrying dict value processing: {}", dictValue);
                 sleep(30 * 1000);
             }
         }
@@ -127,6 +144,9 @@ public class DictWeightClient {
                     continue;
                 }
                 String[] parts = line.split(",");
+                if (parts.length != 2) {
+                    continue;
+                }
                 DictValue dictValue = new DictValue(Integer.parseInt(parts[0]), parts[1]);
                 dictSet.add(dictValue);
             }

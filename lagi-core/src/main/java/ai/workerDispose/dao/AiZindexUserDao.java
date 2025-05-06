@@ -110,13 +110,12 @@ public class AiZindexUserDao extends MysqlAdapter {
         return msg > 0;
     }
 
-    public List<DictValue> getDictList(int pageNumber, int pageSize) {
-        int pageNumbers =(pageNumber - 1) * pageSize;
+    public List<DictValue> getDictList(int offset, int limit) {
         String sql = "SELECT azu.did,aud.plain_text AS plainText FROM " +
                 "(SELECT distinct (did) FROM ai_zindex_user ORDER BY did limit ?, ?) azu\n" +
                 " LEFT JOIN ai_unindex_dict aud ON aud.did = azu.did";
-        List<DictValue> list = select(DictValue.class, sql, pageNumbers, pageSize);
-        return list.size() > 0 && list != null ? list : new ArrayList<>();
+        List<DictValue> list = select(DictValue.class, sql, offset, limit);
+        return list != null && !list.isEmpty() ? list : new ArrayList<>();
     }
 
     /**

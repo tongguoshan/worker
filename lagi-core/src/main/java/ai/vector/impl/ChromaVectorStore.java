@@ -1,9 +1,9 @@
 package ai.vector.impl;
 
-import ai.embedding.Embeddings;
 import ai.common.pojo.VectorStoreConfig;
-import ai.vector.pojo.QueryCondition;
+import ai.embedding.Embeddings;
 import ai.vector.pojo.IndexRecord;
+import ai.vector.pojo.QueryCondition;
 import ai.vector.pojo.UpsertRecord;
 import ai.vector.pojo.VectorCollection;
 import com.google.gson.internal.LinkedTreeMap;
@@ -12,9 +12,13 @@ import tech.amikos.chromadb.Collection;
 import tech.amikos.chromadb.EmbeddingFunction;
 import tech.amikos.chromadb.handler.ApiException;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
 public class ChromaVectorStore extends BaseVectorStore {
+    private static final int TIMEOUT = 60 * 3;
     public static class CustomEmbeddingFunction implements EmbeddingFunction {
         private Embeddings ef;
 
@@ -35,18 +39,23 @@ public class ChromaVectorStore extends BaseVectorStore {
 
     private CustomEmbeddingFunction embeddingFunction;
     private Map<String, String> colMetadata;
-    private Client client;
 
     public ChromaVectorStore(VectorStoreConfig config, Embeddings embeddingFunction) {
         this.config = config;
         this.embeddingFunction = new CustomEmbeddingFunction(embeddingFunction);
-        client = new Client(config.getUrl());
         colMetadata = new LinkedTreeMap<>();
         colMetadata.put("hnsw:space", config.getMetric());
         colMetadata.put("embedding_function", this.embeddingFunction.getClass().getName());
     }
 
+    private Client getClient() {
+        Client client = new Client(this.config.getUrl());
+        client.setTimeout(TIMEOUT);
+        return client;
+    }
+
     private Collection getCollection(String category) {
+        Client client = getClient();
         Collection collection = null;
         try {
             collection = client.createCollection(category, colMetadata, true, this.embeddingFunction);
@@ -102,6 +111,9 @@ public class ChromaVectorStore extends BaseVectorStore {
             qr = collection.query(queryTexts, n, where, null, null);
         } catch (ApiException e) {
             e.printStackTrace();
+        }
+        if (qr == null) {
+            return result;
         }
         for (int i = 0; i < qr.getDocuments().size(); i++) {
             for (int j = 0; j < qr.getDocuments().get(i).size(); j++) {
@@ -194,6 +206,7 @@ public class ChromaVectorStore extends BaseVectorStore {
     @Override
     public void deleteCollection(String category) {
         try {
+            Client client = getClient();
             for (VectorCollection vectorCollection : listCollections()) {
                 if (vectorCollection.getCategory().equals(category)) {
                     client.deleteCollection(category);
@@ -209,6 +222,7 @@ public class ChromaVectorStore extends BaseVectorStore {
     public List<VectorCollection> listCollections() {
         List<VectorCollection> result = new ArrayList<>();
         try {
+            Client client = getClient();
             List<Collection> collections = client.listCollections();
             for (Collection collection : collections) {
                 VectorCollection vectorCollection = VectorCollection.builder()

@@ -74,10 +74,7 @@ public class DictWeightProcessing {
         });
 
         for (IndexDictValues indexDictValues : indexDictValuesList) {
-            long start = System.currentTimeMillis();
             List<IndexRecord> nodeQueryList = query(indexDictValues);
-            long end = System.currentTimeMillis();
-            System.out.println("node query size is " + nodeQueryList.size() + ", time is " + (end - start) + "ms");
             List<Node> nodeList = indexRecordTONode(nodeQueryList, indexDictValues.getDid());
             if (!nodeList.isEmpty()) {
                 List<Node> nodes = fieldRating(indexDictValues.getPlainText(), removeDuplicates(nodeList));
@@ -93,8 +90,12 @@ public class DictWeightProcessing {
     private List<IndexRecord> query(IndexDictValues dictValue) {
         try {
             vectorSemaphore.acquire();
+            long start = System.currentTimeMillis();
             try {
-                return queryLocal(dictValue);
+                List<IndexRecord> result = queryLocal(dictValue);
+                long end = System.currentTimeMillis();
+                System.out.println(dictValue.getPlainText() + " node query size is " + result.size() + ", time is " + (end - start) + "ms");
+                return result;
             } finally {
                 vectorSemaphore.release();
             }

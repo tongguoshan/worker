@@ -22,6 +22,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.concurrent.Semaphore;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -42,6 +43,9 @@ public class DictWeightProcessing {
     private static final String VECTOR_QUERY_URL = "https://lagi.saasai.top/v1/vector/query";
     private static final String CATEGORY = "dict";
     private static final double QUERY_SIMILARITY = 0.15;
+
+    private static final Semaphore vectorSemaphore = new Semaphore(5);
+
 
     public void dictWeightProcess(List<DictValue> dictList) {
         List<IndexDictValues> indexDictValuesList = new ArrayList<>();
@@ -87,8 +91,17 @@ public class DictWeightProcessing {
     }
 
     private List<IndexRecord> query(IndexDictValues dictValue) {
-        return queryLocal(dictValue);
-
+        try {
+            vectorSemaphore.acquire();
+            try {
+                return queryLocal(dictValue);
+            } finally {
+                vectorSemaphore.release();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Query operation was interrupted", e);
+        }
     }
 
     private List<IndexRecord> queryLocal(IndexDictValues dictValue) {

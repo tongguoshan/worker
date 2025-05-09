@@ -7,6 +7,7 @@ import ai.llm.service.CompletionsService;
 import ai.openai.pojo.ChatCompletionRequest;
 import ai.openai.pojo.ChatCompletionResult;
 import ai.openai.pojo.ChatMessage;
+import ai.utils.LRUCache;
 import ai.utils.OkHttpUtil;
 import ai.vector.VectorStoreService;
 import ai.vector.pojo.IndexRecord;
@@ -45,6 +46,9 @@ public class DictWeightProcessing {
     private static final double QUERY_SIMILARITY = 0.15;
 
     private static final Semaphore vectorSemaphore = new Semaphore(5);
+
+    private static final LRUCache<IndexDictValues, List<IndexRecord>> dictCache = new LRUCache<>(100);
+    private static final LRUCache<String, String> promptCache = new LRUCache<>(100000);
 
 
     public void dictWeightProcess(List<DictValue> dictList) {
@@ -88,6 +92,9 @@ public class DictWeightProcessing {
     }
 
     private List<IndexRecord> query(IndexDictValues dictValue) {
+        if (dictCache.containsKey(dictValue)) {
+            return dictCache.get(dictValue);
+        }
         try {
             vectorSemaphore.acquire();
             long start = System.currentTimeMillis();
@@ -95,6 +102,7 @@ public class DictWeightProcessing {
                 List<IndexRecord> result = queryLocal(dictValue);
                 long end = System.currentTimeMillis();
                 System.out.println(dictValue.getPlainText() + " node query size is " + result.size() + ", time is " + (end - start) + "ms");
+                dictCache.put(dictValue, result);
                 return result;
             } finally {
                 vectorSemaphore.release();
@@ -287,6 +295,9 @@ public class DictWeightProcessing {
     }
 
     private String chat(String content) {
+        if (promptCache.containsKey(content)) {
+            return promptCache.get(content);
+        }
         ChatCompletionRequest chatCompletionRequest = new ChatCompletionRequest();
         chatCompletionRequest.setTemperature(0.8);
         chatCompletionRequest.setMax_tokens(1024);
@@ -307,6 +318,7 @@ public class DictWeightProcessing {
             if (retry != null && retry.contains("包含不安全或敏感内容")) {
                 throw new RuntimeException(retry);
             }
+            promptCache.put(content, retry);
         }
         return retry;
     }

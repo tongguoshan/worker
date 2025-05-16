@@ -1,8 +1,13 @@
 package ai.workerDispose.dao;
 
 import ai.database.impl.MysqlAdapter;
+import ai.index.BaseIndex;
 import ai.workerDispose.pojo.*;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -111,11 +116,26 @@ public class AiZindexUserDao extends MysqlAdapter {
     }
 
     public List<DictValue> getDictList(int offset, int limit) {
-        String sql = "SELECT azu.did,aud.plain_text AS plainText FROM " +
+        String sql = "SELECT azu.did,aud.plain_text AS plainText, " +
+                "aud.sub_dict_table_index as tableIndex, aud.sub_id_in_table as subId FROM " +
                 "(SELECT distinct (did) FROM ai_zindex_user ORDER BY did limit ?, ?) azu\n" +
                 " LEFT JOIN ai_unindex_dict aud ON aud.did = azu.did";
         List<DictValue> list = select(DictValue.class, sql, offset, limit);
         return list != null && !list.isEmpty() ? list : new ArrayList<>();
+    }
+
+    public String getDictTableName(int tableIndex) throws SQLException {
+        Connection conn = getCon();
+        String sql = "SELECT sub_table_name FROM ai_subindex_dict WHERE sub_id = ?";
+        String result = null;
+        PreparedStatement ps = conn.prepareStatement(sql);;
+        ps.setInt(1, tableIndex);
+        ResultSet rs = ps.executeQuery();
+        while (rs.next()) {
+            result = rs.getString(1);
+        }
+        BaseIndex.closeConnection(rs, ps);
+        return result;
     }
 
     /**

@@ -11,4 +11,11 @@ import lombok.*;
 public class DictValue {
     private Integer did;
     private String plainText;
+    private Integer tableIndex;
+    private Integer subId;
+
+    public DictValue(Integer did, String plainText) {
+        this.did = did;
+        this.plainText = plainText;
+    }
 }

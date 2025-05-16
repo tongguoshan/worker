@@ -12,6 +12,7 @@ import com.baidubce.qianfan.model.chat.ChatRequest;
 import com.baidubce.qianfan.model.chat.ChatResponse;
 import com.baidubce.qianfan.model.chat.Message;
 import io.reactivex.Observable;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -20,6 +21,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 @LLM(modelNames = {"ERNIE-Speed-128K","ERNIE-Bot-turbo","ERNIE-4.0-8K","ERNIE-3.5-8K-0205","ERNIE-3.5-4K-0205", "ERNIE-3.5-8K-1222"})
+@Slf4j
 public class ErnieAdapter extends ModelService implements ILlmAdapter {
 
     @Override
@@ -40,7 +42,9 @@ public class ErnieAdapter extends ModelService implements ILlmAdapter {
         Qianfan qianfan = new Qianfan(Auth.TYPE_OAUTH, apiKey, secretKey);
         ChatRequest request = convertRequest(chatCompletionRequest);
         ChatResponse response = qianfan.chatCompletion(request);
-        return convertResponse(response);
+        ChatCompletionResult result = convertResponse(response);
+        log.info("response: {}", ChatCompletionUtil.getFirstAnswer(result));
+        return result;
     }
 
     @Override

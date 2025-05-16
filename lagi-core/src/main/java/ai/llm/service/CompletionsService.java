@@ -86,7 +86,7 @@ public class CompletionsService implements ChatCompletion{
                     doCompleted = true;
                 }
             }
-            chatCompletionRequest.setModel(null);
+//            chatCompletionRequest.setModel(null);
             if(!doCompleted) {
                 List<ILlmAdapter> ragAdapters = null;
                 if(indexSearchDataList != null && !indexSearchDataList.isEmpty()) {

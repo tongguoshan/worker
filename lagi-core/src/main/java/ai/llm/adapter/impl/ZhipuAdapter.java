@@ -8,18 +8,21 @@ import ai.openai.pojo.ChatCompletionChoice;
 import ai.openai.pojo.ChatCompletionRequest;
 import ai.openai.pojo.ChatCompletionResult;
 import ai.openai.pojo.ChatMessage;
+import ai.utils.qa.ChatCompletionUtil;
 import com.google.gson.Gson;
 import com.zhipu.oapi.ClientV4;
 import com.zhipu.oapi.Constants;
 import com.zhipu.oapi.service.v4.model.ModelApiResponse;
 import com.zhipu.oapi.service.v4.model.ModelData;
 import io.reactivex.Observable;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 @LLM(modelNames = {"glm-3-turbo", "glm-4", "glm-4v"})
+@Slf4j
 public class ZhipuAdapter extends ModelService implements ILlmAdapter {
     private static final Gson gson = new Gson();
 
@@ -38,7 +41,9 @@ public class ZhipuAdapter extends ModelService implements ILlmAdapter {
         if (invokeModelApiResp.getCode() == 400) {
             return getDummyCompletion(invokeModelApiResp.getMsg());
         }
-        return convertResponse(invokeModelApiResp.getData());
+        ChatCompletionResult result = convertResponse(invokeModelApiResp.getData());
+        log.info("response: {}", ChatCompletionUtil.getFirstAnswer(result));
+        return result;
     }
 
     private ChatCompletionResult getDummyCompletion(String message) {

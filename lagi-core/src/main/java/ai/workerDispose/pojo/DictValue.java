@@ -7,7 +7,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Data
-@EqualsAndHashCode
+@EqualsAndHashCode(exclude = {"tableIndex", "subId"})
 public class DictValue {
     private Integer did;
     private String plainText;

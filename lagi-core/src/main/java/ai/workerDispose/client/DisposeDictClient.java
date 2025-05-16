@@ -12,11 +12,9 @@ import com.google.common.collect.Lists;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
+import java.io.*;
 import java.sql.SQLException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -40,10 +38,14 @@ public class DisposeDictClient {
             new ArrayBlockingQueue<>(THREAD_POOL_SIZE * 1000)
     );
 
+    private static final String DICT_WEIGHT_PROGRESS_FILE = System.getProperty("user.home") + "/dict_dispose_progress.txt";
+    private static final Set<DictValue> dictValueSet;
+
     static {
         executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
         ContextLoader.loadContext();
         aiZindexUserDao = new AiZindexUserDao();
+        dictValueSet = loadDictValueFromFile();
     }
 
     public static void main(String[] args) {
@@ -65,6 +67,10 @@ public class DisposeDictClient {
     }
 
     private static void asyncDictWeightDispose(DictValue dictValue) {
+        if (dictValueSet.contains(dictValue)) {
+            logger.info("Dict value already processed: {}", dictValue);
+            return;
+        }
         if (dictValue.getPlainText().length() == 1 || isEnglishText(dictValue.getPlainText())) {
             return;
         }
@@ -91,6 +97,7 @@ public class DisposeDictClient {
                 logger.error("Error deleting dict value: {}", e.getMessage());
             }
         }
+        writeDictValueToFile(Collections.singletonList(dictValue));
     }
 
     public static boolean isEnglishText(String text) {
@@ -146,5 +153,41 @@ public class DisposeDictClient {
         params.put("srcTableName", srcTableName);
         params.put("id", idStr);
         OkHttpUtil.get(url, params);
+    }
+
+    private static Set<DictValue> loadDictValueFromFile() {
+        Set<DictValue> dictSet = new HashSet<>();
+        File file = new File(DICT_WEIGHT_PROGRESS_FILE);
+        if (!file.exists()) {
+            return dictSet;
+        }
+        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (line.trim().isEmpty()) {
+                    continue;
+                }
+                String[] parts = line.split(",");
+                if (parts.length != 2) {
+                    continue;
+                }
+                DictValue dictValue = new DictValue(Integer.parseInt(parts[0]), parts[1]);
+                dictSet.add(dictValue);
+            }
+        } catch (IOException e) {
+            logger.error("Error reading dict weight progress file: {}", e.getMessage());
+        }
+        return dictSet;
+    }
+
+    private static synchronized void writeDictValueToFile(List<DictValue> dictList) {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(DICT_WEIGHT_PROGRESS_FILE, true))) {
+            for (DictValue dictValue : dictList) {
+                writer.write(dictValue.getDid() + "," + dictValue.getPlainText());
+                writer.newLine();
+            }
+        } catch (IOException e) {
+            logger.error("Error writing dict weight progress file: {}", e.getMessage());
+        }
     }
 }

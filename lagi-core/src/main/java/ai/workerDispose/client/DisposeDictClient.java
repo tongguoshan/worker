@@ -97,7 +97,7 @@ public class DisposeDictClient {
         if (text == null || text.isEmpty()) {
             return false;
         }
-        return text.matches("^[a-zA-Z\\s.,;:!?'\"()\\[\\]{}\\-_]+$");
+        return text.matches("^[a-zA-Z0-9\\s.,;:!?'\"()\\[\\]{}\\-_]+$");
     }
 
     public static String getPromptTemplate() {

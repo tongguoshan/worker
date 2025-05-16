@@ -304,6 +304,7 @@ public class DictWeightProcessing {
         ChatMessage message = new ChatMessage();
         message.setRole("user");
         message.setContent(content);
+        chatCompletionRequest.setModel("glm-4-flash-250414");
         chatCompletionRequest.setMessages(Lists.newArrayList(message));
         chatCompletionRequest.setStream(false);
         CompletionsService completionsService = new CompletionsService();

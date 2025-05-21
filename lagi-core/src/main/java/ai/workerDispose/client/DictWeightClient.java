@@ -84,7 +84,7 @@ public class DictWeightClient {
             logger.info("Dict value already processed: {}", dictValue);
             return;
         }
-        if (isEnglishText(dictValue.getPlainText())) {
+        if (containEnglish(dictValue.getPlainText())) {
             logger.info("Dict value is English text: {}", dictValue);
             return;
         }
@@ -112,11 +112,11 @@ public class DictWeightClient {
         writeDictValueToFile(dictList);
     }
 
-    private static boolean isEnglishText(String text) {
-        if (text == null || text.isEmpty()) {
+    private static boolean containEnglish(String input) {
+        if (input == null || input.isEmpty()) {
             return false;
         }
-        return text.matches("^[a-zA-Z0-9\\s.,;:!?'\"()\\[\\]{}\\-_]+$");
+        return input.matches(".*[a-zA-Z].*");
     }
 
     private static void sleep(long millis) {

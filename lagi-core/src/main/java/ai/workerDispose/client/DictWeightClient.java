@@ -84,6 +84,10 @@ public class DictWeightClient {
             logger.info("Dict value already processed: {}", dictValue);
             return;
         }
+        if (isEnglishText(dictValue.getPlainText())) {
+            logger.info("Dict value is English text: {}", dictValue);
+            return;
+        }
         List<DictValue> dictList = new ArrayList<>();
         dictList.add(dictValue);
         logger.info("Processing dict value: {}", dictValue);
@@ -106,6 +110,13 @@ public class DictWeightClient {
         long timeUsed = (endTime - startTime) / 1000;
         logger.info("Processing dict value completed: {}, and it took {} seconds", dictValue, timeUsed);
         writeDictValueToFile(dictList);
+    }
+
+    private static boolean isEnglishText(String text) {
+        if (text == null || text.isEmpty()) {
+            return false;
+        }
+        return text.matches("^[a-zA-Z0-9\\s.,;:!?'\"()\\[\\]{}\\-_]+$");
     }
 
     private static void sleep(long millis) {

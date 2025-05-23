@@ -88,6 +88,10 @@ public class DictWeightClient {
             logger.info("Dict value is English text: {}", dictValue);
             return;
         }
+        if (isDigitSpaceOrPunctuation(dictValue.getPlainText())) {
+            logger.info("Dict value is digit, space or punctuation: {}", dictValue);
+            return;
+        }
         List<DictValue> dictList = new ArrayList<>();
         dictList.add(dictValue);
         logger.info("Processing dict value: {}", dictValue);
@@ -110,6 +114,13 @@ public class DictWeightClient {
         long timeUsed = (endTime - startTime) / 1000;
         logger.info("Processing dict value completed: {}, and it took {} seconds", dictValue, timeUsed);
         writeDictValueToFile(dictList);
+    }
+
+    private static boolean isDigitSpaceOrPunctuation(String s) {
+        if (s == null) {
+            return false;
+        }
+        return s.matches("^[0-9\\p{P} ]+$");
     }
 
     private static boolean containEnglish(String input) {
